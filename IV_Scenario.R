@@ -41,6 +41,8 @@ V(graph)$nvals    <- c(2, 2, 2, 2)
 E(graph)$rlconnect     <- c(0, 0, 0, 0)
 E(graph)$edge.monotone <- c(0, 0, 0, 0)
 
+graph$
+
 # 3. Specify the causal effect and compute bounds
 riskdiff <- "p{Y(X = 1) = 1} - p{Y(X = 0) = 1}"
 obj <- analyze_graph(graph, constraints = NULL, effectt = riskdiff)
@@ -55,7 +57,7 @@ ATE_bounds <- boundsfunc(
   p11_0 = p11_0, p11_1 = p11_1
 )
 
-
+### Calculate true ATE
 # Simulate potential outcomes for each individual using the same U
 logit_Y1 <- -0.5 + beta_X * 1 + beta_U * U  # If X=1
 logit_Y0 <- -0.5 + beta_X * 0 + beta_U * U  # If X=0
