@@ -41,7 +41,7 @@ V(graph)$nvals    <- c(2, 2, 2, 2)
 E(graph)$rlconnect     <- c(0, 0, 0, 0)
 E(graph)$edge.monotone <- c(0, 0, 0, 0)
 
-graph$
+V(graph)
 
 # 3. Specify the causal effect and compute bounds
 riskdiff <- "p{Y(X = 1) = 1} - p{Y(X = 0) = 1}"
@@ -75,3 +75,7 @@ ATE_true <- EY1 - EY0
 
 ATE_bounds
 ATE_true
+
+
+closeAllConnections()
+rm(list=ls())
