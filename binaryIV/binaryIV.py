@@ -38,12 +38,12 @@ def pick_from_bimodal(n=1, mu1=1, sigma1=0.5, mu2=-1, sigma2=0.5):
 def simulate_deterministic_data_with_probabilistic_ate(
     n=500,
     seed=None,
-    b_U_X=np.random.normal(0, 1, 1),
-    b_U_Y=np.random.normal(0, 1, 1),
-    b_Z=pick_from_bimodal(),
-    b_X_Y=pick_from_bimodal(),
-    intercept_X=0,
-    intercept_Y=0
+    b_U_X = None,
+    b_U_Y = None,
+    b_Z = None,
+    b_X_Y = None,
+    intercept_X = None,
+    intercept_Y = None
 ):
     """
     Simulate deterministic (binary) data for causal analysis, 
@@ -79,13 +79,23 @@ def simulate_deterministic_data_with_probabilistic_ate(
     if seed is None:
         seed = np.random.randint(0, 1e6)
     np.random.seed(seed)
-    b_U_X=np.random.normal(0, 1, 1),
-    b_U_Y=np.random.normal(0, 1, 1),
-    b_Z=pick_from_bimodal(),
-    b_X_Y=pick_from_bimodal(),
-    intercept_X=0,
-    intercept_Y=0
-    print(f"Seed: {seed}, b_U_X: {b_U_X}, b_U_Y: {b_U_Y}, b_Z: {b_Z}, b_X_Y: {b_X_Y}")
+
+    # Set default values for coefficients if not provided
+    if b_U_X is None:
+        b_U_X = np.random.normal(0, 1, 1)[0]
+    if b_U_Y is None:
+        b_U_Y = np.random.normal(0, 1, 1)[0]
+    if b_Z is None:
+        b_Z = pick_from_bimodal()
+    if b_X_Y is None:
+        b_X_Y = pick_from_bimodal()
+    if intercept_X is None:
+        intercept_X = 0
+    if intercept_Y is None:
+        intercept_Y = 0
+
+
+    # print(f"Seed: {seed}, b_U_X: {b_U_X}, b_U_Y: {b_U_Y}, b_Z: {b_Z}, b_X_Y: {b_X_Y}")
 
 
 
