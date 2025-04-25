@@ -8,19 +8,8 @@ import matplotlib.pyplot as plt
 
 
 def entropy_dist(X):
-    """
-    Compute the entropy of a distribution.
-
-    Args:
-        X (np.ndarray): Input distribution. Can be 1D or 2D.
-
-    Returns:
-        float or np.ndarray: Entropy value(s).
-    """
-    X = np.asarray(X)
-    if X.ndim == 1:
-        return -np.sum(X * np.log2(X, where=(X != 0)))
-    return -np.sum(X * np.log2(X, where=(X != 0)), axis=1)
+    ## Ignore zero values in distributions
+    return -np.sum(X*np.log2(X, where=(X!=0)), axis=1)
 
 
 def mutual_information_dist(XY):
