@@ -3,6 +3,54 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+def extract_prob_dict(df):
+    """
+    Given a DataFrame with binary columns Y, X, Z,
+    compute the conditional probabilities P(Y, X | Z) and return
+    a dictionary in the format expected by causaloptim.
+
+    Parameters:
+        df (pd.DataFrame): must contain columns 'Y', 'X', and 'Z' with binary values
+
+    Returns:
+        dict: keys are of form 'pYX_Z', e.g. 'p00_0', 'p11_1'
+    """
+    assert set(['Y', 'X', 'Z']).issubset(df.columns), "df must have Y, X, Z columns"
+    
+    # Count joint occurrences
+    joint_counts = df.groupby(['Y', 'X', 'Z']).size().reset_index(name='count')
+
+    # Count total occurrences of each Z
+    z_counts = df['Z'].value_counts().to_dict()
+
+    # Compute conditional probabilities
+    joint_counts['p_yx_z'] = joint_counts.apply(
+        lambda row: row['count'] / z_counts[row['Z']], axis=1
+    )
+
+    # Convert to lookup dict
+    marg_dict = {
+        (int(row.Y), int(row.X), int(row.Z)): row.p_yx_z
+        for _, row in joint_counts.iterrows()
+    }
+
+    # Helper to safely extract or return 0
+    def get_prob(y, x, z):
+        return marg_dict.get((y, x, z), 0.0)
+
+    # Build final dictionary in causaloptim format
+    return {
+        'p00_0': get_prob(0, 0, 0),
+        'p10_0': get_prob(1, 0, 0),
+        'p01_0': get_prob(0, 1, 0),
+        'p11_0': get_prob(1, 1, 0),
+        'p00_1': get_prob(0, 0, 1),
+        'p10_1': get_prob(1, 0, 1),
+        'p01_1': get_prob(0, 1, 1),
+        'p11_1': get_prob(1, 1, 1),
+    }
+
+
 def pick_from_bimodal(n=1, mu1=1, sigma1=0.5, mu2=-1, sigma2=0.5):
     """
     Generate samples from a bimodal distribution.
@@ -142,3 +190,19 @@ def simulate_deterministic_data_with_probabilistic_ate(
         'X': X,
         'Y': Y
     }
+
+def entropy_of_array(arr):
+    """
+    Calculate the entropy of a numpy array.
+    """
+    # Count occurrences of each unique value
+    counts = np.bincount(arr)
+    probabilities = counts / len(arr)
+    
+    # Filter out zero probabilities
+    probabilities = probabilities[probabilities > 0]
+    
+    # Calculate entropy
+    return -np.sum(probabilities * np.log(probabilities))
+
+results = []
