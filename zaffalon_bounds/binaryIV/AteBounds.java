@@ -136,8 +136,6 @@ public class AteBounds {
         // Retrieve the set of learned SCMs (extreme points of the credal set)
         List<StructuralCausalModel> modelSet = builder.getSelectedPoints();
 
-        System.out.println("Learned " + modelSet.size() + " models.");
-
         // Initialize multi-model inference over the set of learned SCMs
         CausalMultiVE multiVE = new CausalMultiVE(modelSet);
 

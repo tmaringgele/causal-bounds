@@ -2,9 +2,8 @@ package binaryIV;
 
 import java.io.FileWriter;
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class ParallelRunner {
     public static void main(String[] args) throws Exception {
@@ -19,25 +18,39 @@ public class ParallelRunner {
         int numThreads = Runtime.getRuntime().availableProcessors();
         System.out.println("Using " + numThreads + " threads to run " + N_INSTANCES + " simulations.");
 
+        long startTime = System.nanoTime(); // ⏱ Start timer
+
         ExecutorService executor = Executors.newFixedThreadPool(numThreads);
-        List<Future<String>> futures = new ArrayList<>();
+        CompletionService<String> completionService = new ExecutorCompletionService<>(executor);
 
         for (int i = 0; i < N_INSTANCES; i++) {
             int b = START_B + i * STEP;
-            futures.add(executor.submit(new BinaryIVAteSimulationTask(b, inputCSV)));
+            completionService.submit(new BinaryIVAteSimulationTask(b, inputCSV));
         }
 
-        executor.shutdown();
-        executor.awaitTermination(1, TimeUnit.HOURS);
-
-        // Write all results to single output file
+        // Write all results as they complete
         try (PrintWriter writer = new PrintWriter(new FileWriter(outputCSV))) {
             writer.println("b_X_Y_1000,zaffalon_bound_lower,zaffalon_bound_upper");
-            for (Future<String> future : futures) {
-                writer.println(future.get());
+
+            for (int i = 0; i < N_INSTANCES; i++) {
+                Future<String> completedFuture = completionService.take(); // blocks until next is done
+                String result = completedFuture.get();
+                writer.println(result);
+
+                // Fortschritt anzeigen
+                System.out.printf("Progress: %d / %d completed (%.1f%%)%n",
+                        i + 1, N_INSTANCES, 100.0 * (i + 1) / N_INSTANCES);
             }
         }
 
+        executor.shutdown();
+
+        long endTime = System.nanoTime(); // ⏱ End timer
+        double durationMillis = (endTime - startTime) / 1_000_000.0;
+        double durationSeconds = durationMillis / 1000.0;
+        double durationMinutes = durationSeconds / 60.0;
+
+        System.out.printf("Runtime: %.2f ms (%.2f s | %.2f min)%n", durationMillis, durationSeconds, durationMinutes);
         System.out.println("All simulations completed.");
     }
 }
