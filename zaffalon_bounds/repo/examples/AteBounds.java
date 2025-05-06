@@ -18,7 +18,6 @@ import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
 import ch.idsia.credici.inference.CausalInference;
 
-
 import java.io.File;
 import java.io.Reader;
 import java.nio.file.Paths;
@@ -26,6 +25,8 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.io.FileWriter;
+import java.io.PrintWriter;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -34,21 +35,35 @@ import org.apache.commons.csv.CSVRecord;
 public class AteBounds {
     public static void main(String[] args) throws Exception {
 
-        // Variable IDs for clarity
-        int Z = 0, X = 1, Y = 2, U = 3;
+        int b_X_Y_1000 = -5000;
+        try (PrintWriter writer = new PrintWriter(new FileWriter("zaffalon_bounds/repo/examples/results.csv"))) {
+            writer.println("b_X_Y_1000,zaffalon_bound_lower,zaffalon_bound_upper");
+            /*
+             * Running 2000 Iterations of this will take 4 hours on my laptop.
+             * It will take 10minutes on a google c4-highcpu-32
+             */
+            for (int i = 0; i < 4; i++) {
+                // Variable IDs for clarity
+                int Z = 0, X = 1, Y = 2, U = 3;
 
-        // Load data from CSV file
-        TIntIntMap[] data = getDataFromCSV("zaffalon_bounds/repo/examples/data300.csv", Z, X, Y);
+                // Load data from CSV file
+                TIntIntMap[] data = getDataFromCSV("zaffalon_bounds/repo/examples/data_for_zaffalon.csv", Z, X, Y, b_X_Y_1000);
 
-        double[] bounds = getBoundsForBinaryIV(data, 100, 30, "ate", Z, X, Y, U);
+                double[] bounds = getBoundsForBinaryIV(data, 100, 30, "ate", Z, X, Y, U);
 
-        // Print the bounded results
-        System.out.printf("ATE (ACE) bounds: [%.4f, %.4f]%n", bounds[0], bounds[1]);
+                // Print the bounded results
+                System.out.printf("Result number %d: for b_X_Y_1000 = %d%n", i, b_X_Y_1000);
+                System.out.printf("ATE (ACE) bounds: [%.4f, %.4f]%n", bounds[0], bounds[1]);
 
+                // Save results to CSV
+                writer.printf("%d,%.4f,%.4f%n", b_X_Y_1000, bounds[0], bounds[1]);
+
+                b_X_Y_1000 += 5;
+            }
+        }
     }
 
-
-    public static TIntIntMap[] getDataFromCSV(String filePath, int Z, int X, int Y, int b_X_Y) throws Exception {
+    public static TIntIntMap[] getDataFromCSV(String filePath, int Z, int X, int Y) throws Exception {
         List<TIntIntMap> dataList = new ArrayList<>();
         try (Reader reader = Files.newBufferedReader(Paths.get("zaffalon_bounds/repo/examples/data300.csv"));
                 CSVParser csv = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader())) {
@@ -67,6 +82,29 @@ public class AteBounds {
         TIntIntMap[] data = dataList.toArray(new TIntIntMap[0]);
         // // Alternative - using the credici library.
         // TIntIntMap[] data = DataUtil.fromCSV("zaffalon_bounds/repo/examples/data300_idx.csv");
+        return data;
+    }
+
+    public static TIntIntMap[] getDataFromCSV(String filePath, int Z, int X, int Y, int b_X_Y_1000) throws Exception {
+        List<TIntIntMap> dataList = new ArrayList<>();
+        try (Reader reader = Files.newBufferedReader(Paths.get(filePath));
+                CSVParser csv = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader())) {
+            for (CSVRecord record : csv) {
+                int bValue = Integer.parseInt(record.get("b_X_Y_1000"));
+                if (bValue == b_X_Y_1000) {
+                    int zVal = Integer.parseInt(record.get("Z"));
+                    int xVal = Integer.parseInt(record.get("X"));
+                    int yVal = Integer.parseInt(record.get("Y"));
+                    // Create a map of variable -> value for this sample
+                    TIntIntMap sample = new TIntIntHashMap();
+                    sample.put(Z, zVal);
+                    sample.put(X, xVal);
+                    sample.put(Y, yVal);
+                    dataList.add(sample);
+                }
+            }
+        }
+        TIntIntMap[] data = dataList.toArray(new TIntIntMap[0]);
         return data;
     }
 
