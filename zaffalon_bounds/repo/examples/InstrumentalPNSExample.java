@@ -65,7 +65,7 @@ public class InstrumentalPNSExample {
         double lower = pns.getData()[0][0][0];
         double upper = pns.getData()[0][1][0];
 
-        System.out.printf("ACE bounds: [%.4f, %.4f]%n", ace_lower, ace_upper);
+        System.out.printf("ACE (=ATE) bounds: [%.4f, %.4f]%n", ace_lower, ace_upper);
 
         System.out.printf("PNS bounds: [%.4f, %.4f]%n", lower, upper);
     }
