@@ -34,7 +34,7 @@ public class PearlBias {
         int executions = 10;
 
         Logger logger = new Logger();
-        String prjPath = ".";
+        String prjPath = "zaffalon_bounds/repo/";
         String wdir = Path.of(prjPath).toString();
 
         int X = 0;
@@ -84,6 +84,8 @@ public class PearlBias {
             int selectVar = ArraysUtil.difference(modelBiased.getEndogenousVars(), model.getEndogenousVars())[0];
 
             TIntIntMap[] dataBiased = SelectionBias.applySelector(data, modelBiased, selectVar);
+
+            System.out.println("modelBiased:" + modelBiased.toString());
 
 
 

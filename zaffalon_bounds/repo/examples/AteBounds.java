@@ -46,11 +46,11 @@ public class AteBounds {
         // Build the SCM with binary variables (cardinality 2) and the specified DAG
         StructuralCausalModel scm = CausalBuilder.of(causalDAG, 2)
         .build();
-        scm.fillExogenousWithRandomFactors(42); // initialize exogenous Z and U with random PMFs
+        // scm.fillExogenousWithRandomFactors(42); // initialize exogenous Z and U with random PMFs
 
         
         List<TIntIntMap> dataList = new ArrayList<>();
-        try (Reader reader = Files.newBufferedReader(Paths.get("zaffalon_bounds/repo/examples/data.csv"));
+        try (Reader reader = Files.newBufferedReader(Paths.get("zaffalon_bounds/repo/examples/data300.csv"));
             CSVParser csv = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader())) {
             for (CSVRecord record : csv) {
                 int zVal = Integer.parseInt(record.get("Z"));
@@ -64,7 +64,10 @@ public class AteBounds {
                 dataList.add(sample);
             }
         }
-        TIntIntMap[] data = dataList.toArray(new TIntIntMap[0]);
+        // TIntIntMap[] data = dataList.toArray(new TIntIntMap[0]);
+
+        TIntIntMap[] data = DataUtil.fromCSV("zaffalon_bounds/repo/examples/data300_idx.csv");
+
 
         int maxIter = 100;        // maximum EM iterations per run
         int runs = 10;            // number of random restarts (trajectories)
@@ -73,11 +76,15 @@ public class AteBounds {
         EMCredalBuilder builder = EMCredalBuilder.of(scm, data)
             .setMaxEMIter(maxIter)
             .setNumTrajectories(runs)
-            .setWeightedEM(true)      // use weighted EM (for convergence stability)
+            .setWeightedEM(false)      // use weighted EM (for convergence stability)
             .build();
 
         // Retrieve the set of learned SCMs (extreme points of the credal set)
         List<StructuralCausalModel> modelSet = builder.getSelectedPoints();
+
+        System.out.println("Learned " + modelSet.size() + " models.");
+        System.out.println("first model: ");
+        modelSet.get(0).printSummary();
 
         // Initialize multi-model inference over the set of learned SCMs
         CausalMultiVE multiVE = new CausalMultiVE(modelSet);
@@ -86,7 +93,7 @@ public class AteBounds {
         VertexFactor pnsFactor = (VertexFactor) multiVE.probNecessityAndSufficiency(X, Y);
 
         // Query 2: Bounds on ATE = P(Y|do X=1) – P(Y|do X=0)
-        VertexFactor ace = (VertexFactor) multiVE.averageCausalEffects(X, Y);
+        VertexFactor ace = (VertexFactor) multiVE.averageCausalEffects(X, Y, 1, 1, 0);
 
         double aceLower = ace.getData()[0][0][0];  // lower bound
         double aceUpper = ace.getData()[0][1][0];  // upper bound
@@ -96,10 +103,13 @@ public class AteBounds {
         double pnsLower = pnsFactor.getData()[0][0][0];
         double pnsUpper = pnsFactor.getData()[0][1][0];
 
+        System.out.println("Maximum EM iterations: " + maxIter);
+        System.out.println("Number of random restarts: " + runs);
+
         // Print the bounded results
         System.out.printf("ATE (ACE) bounds: [%.4f, %.4f]%n", aceLower, aceUpper);
         System.out.printf("PNS bounds: [%.4f, %.4f]%n", pnsLower, pnsUpper);
-
+        
 
 
     }
