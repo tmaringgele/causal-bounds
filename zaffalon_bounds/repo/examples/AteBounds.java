@@ -37,6 +37,18 @@ public class AteBounds {
         // Variable IDs for clarity
         int Z = 0, X = 1, Y = 2, U = 3;
 
+        // Load data from CSV file
+        TIntIntMap[] data = getDataFromCSV("zaffalon_bounds/repo/examples/data300.csv", Z, X, Y);
+
+        double[] bounds = getBoundsForBinaryIV(data, 100, 30, "ate", Z, X, Y, U);
+
+        // Print the bounded results
+        System.out.printf("ATE (ACE) bounds: [%.4f, %.4f]%n", bounds[0], bounds[1]);
+
+    }
+
+
+    public static TIntIntMap[] getDataFromCSV(String filePath, int Z, int X, int Y, int b_X_Y) throws Exception {
         List<TIntIntMap> dataList = new ArrayList<>();
         try (Reader reader = Files.newBufferedReader(Paths.get("zaffalon_bounds/repo/examples/data300.csv"));
                 CSVParser csv = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader())) {
@@ -53,17 +65,9 @@ public class AteBounds {
             }
         }
         TIntIntMap[] data = dataList.toArray(new TIntIntMap[0]);
-
+        // // Alternative - using the credici library.
         // TIntIntMap[] data = DataUtil.fromCSV("zaffalon_bounds/repo/examples/data300_idx.csv");
-    
-        double[] bounds = getBoundsForBinaryIV(data, 100, 30, "ate", Z, X, Y, U);
-
-        
-
-
-        // Print the bounded results
-        System.out.printf("ATE (ACE) bounds: [%.4f, %.4f]%n", bounds[0], bounds[1]);
-
+        return data;
     }
 
     public static double[] getBoundsForBinaryIV(TIntIntMap[] data , int maxIter, int runs, String query, int Z, int X, int Y, int U) throws Exception {
