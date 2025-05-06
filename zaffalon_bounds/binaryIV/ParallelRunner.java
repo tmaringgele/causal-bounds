@@ -4,6 +4,7 @@ import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import binaryIV.BinaryIVAteSimulationTask;
 
 public class ParallelRunner {
     public static void main(String[] args) throws Exception {
@@ -11,7 +12,7 @@ public class ParallelRunner {
         String outputCSV = "zaffalon_bounds/binaryIV/results_parallel.csv";
 
         // Limit how many simulations to run (for testing)
-        int N_INSTANCES = 10; // Change this to test with fewer simulations
+        int N_INSTANCES = 2000; // Change this to test with fewer simulations
         int START_B = -5000;
         int STEP = 5;
 
