@@ -1,4 +1,4 @@
-package repo.examples;
+package binaryIV;
 
 import ch.idsia.credici.inference.CausalMultiVE;
 import ch.idsia.credici.inference.CausalVE;
@@ -36,7 +36,7 @@ public class AteBounds {
     public static void main(String[] args) throws Exception {
 
         int b_X_Y_1000 = -5000;
-        try (PrintWriter writer = new PrintWriter(new FileWriter("zaffalon_bounds/repo/examples/results.csv"))) {
+        try (PrintWriter writer = new PrintWriter(new FileWriter("zaffalon_bounds/binaryIV/results.csv"))) {
             writer.println("b_X_Y_1000,zaffalon_bound_lower,zaffalon_bound_upper");
             /*
              * Running 2000 Iterations of this will take 4 hours on my laptop.
@@ -47,7 +47,7 @@ public class AteBounds {
                 int Z = 0, X = 1, Y = 2, U = 3;
 
                 // Load data from CSV file
-                TIntIntMap[] data = getDataFromCSV("zaffalon_bounds/repo/examples/data_for_zaffalon.csv", Z, X, Y, b_X_Y_1000);
+                TIntIntMap[] data = getDataFromCSV("zaffalon_bounds/binaryIV/data_for_zaffalon.csv", Z, X, Y, b_X_Y_1000);
 
                 double[] bounds = getBoundsForBinaryIV(data, 100, 30, "ate", Z, X, Y, U);
 
