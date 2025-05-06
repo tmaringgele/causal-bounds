@@ -11,14 +11,14 @@ public class ParallelRunner {
         String outputCSV = "zaffalon_bounds/binaryIV/results_parallel.csv";
 
         // Limit how many simulations to run (for testing)
-        int N_INSTANCES = 10; // ← Change this to test with fewer simulations
+        int N_INSTANCES = 10; // Change this to test with fewer simulations
         int START_B = -5000;
         int STEP = 5;
 
         int numThreads = Runtime.getRuntime().availableProcessors();
         System.out.println("Using " + numThreads + " threads to run " + N_INSTANCES + " simulations.");
 
-        long startTime = System.nanoTime(); // ⏱ Start timer
+        long startTime = System.nanoTime(); //  Start timer
 
         ExecutorService executor = Executors.newFixedThreadPool(numThreads);
         CompletionService<String> completionService = new ExecutorCompletionService<>(executor);
@@ -45,7 +45,7 @@ public class ParallelRunner {
 
         executor.shutdown();
 
-        long endTime = System.nanoTime(); // ⏱ End timer
+        long endTime = System.nanoTime(); // End timer
         double durationMillis = (endTime - startTime) / 1_000_000.0;
         double durationSeconds = durationMillis / 1000.0;
         double durationMinutes = durationSeconds / 60.0;
