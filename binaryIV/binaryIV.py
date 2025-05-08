@@ -191,18 +191,20 @@ def simulate_deterministic_data_with_probabilistic_ate(
         'Y': Y
     }
 
+import numpy as np
+
 def entropy_of_array(arr):
     """
-    Calculate the entropy of a numpy array.
+    Calculate the empirical Shannon entropy of a numpy array in bits.
     """
     # Count occurrences of each unique value
     counts = np.bincount(arr)
     probabilities = counts / len(arr)
     
-    # Filter out zero probabilities
+    # Filter out zero probabilities to avoid log(0)
     probabilities = probabilities[probabilities > 0]
     
-    # Calculate entropy
-    return -np.sum(probabilities * np.log(probabilities))
+    # Calculate entropy in bits
+    return -np.sum(probabilities * np.log2(probabilities))
 
 results = []
