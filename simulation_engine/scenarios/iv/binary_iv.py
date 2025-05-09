@@ -1,5 +1,6 @@
 from .base_iv import IVScenario
 from simulation_engine.util.datagen_util import datagen_util
+from simulation_engine.algorithms.causaloptim import Causaloptim
 import numpy as np
 import pandas as pd
 
@@ -10,15 +11,39 @@ class BinaryIV(IVScenario):
 
     # enriches self.data with causaloptim bound information
     def bound_ate_causaloptim(self):
+        # Define Scenario and target quantity
+        graph_str = "(Z -+ X, X -+ Y, Ur -+ X, Ur -+ Y)"
+        leftside = [1, 0, 0, 0]
+        latent = [0, 0, 0, 1]
+        nvals = [2, 2, 2, 2]
+        rlconnect = [0, 0, 0, 0]
+        monotone = [0, 0, 0, 0]
 
-        print('running bound_ate_causaloptim')
-        print("Data used for ATE calculation:", self.data)
-        return (0.2, 0.8)  # placeholder
+        for idx, sim in self.data.iterrows():
+            df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
+            bounds = Causaloptim.run_experiment(graph_str, leftside, latent, nvals, rlconnect, monotone, df)
+            bound_lower = float(bounds[0][0])
+            bound_upper = float(bounds[1][0])
+
+            #Flatten bounds to [2, 2]
+            if bound_upper > 1: 
+                bound_upper = 1
+            if bound_lower < -1: 
+                bound_lower = -1
+
+            bounds_valid = bound_lower <= sim['ATE_true'] <= bound_upper
+            bounds_width = bound_upper - bound_lower
+
+            self.data.at[idx, 'causaloptim_bound_lower'] = bound_lower
+            self.data.at[idx, 'causaloptim_bound_upper'] = bound_upper
+            self.data.at[idx, 'causaloptim_bound_valid'] = bounds_valid
+            self.data.at[idx, 'causaloptim_bound_width'] = bounds_width
+
 
     
 
     @staticmethod
-    def generate_data(N_simulations=2000, n=500, seed=None, b_U_X=None, b_U_Y=None, b_Z=None, b_X_Y=None, intercept_X=None, intercept_Y=None):
+    def generate_data_rolling_ate(N_simulations=2000, n=500, seed=None, b_U_X=None, b_U_Y=None, b_Z=None, intercept_X=None, intercept_Y=None):
         """
         Generate data for a binary instrumental variable scenario.
 
@@ -29,16 +54,19 @@ class BinaryIV(IVScenario):
             b_U_X (float): Coefficient for the effect of unobserved confounder U on X. Default is drawn from N(0, 1).
             b_U_Y (float): Coefficient for the effect of unobserved confounder U on Y. Default is drawn from N(0, 1).
             b_Z (float): Coefficient for the effect of instrument Z on X. Default is drawn from a bimodal distribution.
-            b_X_Y (float): Coefficient for the effect of treatment X on Y. Default is drawn from a bimodal distribution.
             intercept_X (float): Intercept for the logistic model of X. Default is 0.
             intercept_Y (float): Intercept for the logistic model of Y. Default is 0.
 
         Returns:
             dict: A dictionary containing the generated data and parameters.
         """
-
         df_results = []
-        for i in range(N_simulations):
+        
+        # determine step size such that we run N_simulations simulations
+        # in the range of -5 to 5
+        step_size = (5 - (-5)) / N_simulations
+
+        for b_X_Y in np.arange(-5, 5, step_size):
             result = BinaryIV._simulate_deterministic_data_with_probabilistic_ate(
                 n=n,
                 seed=seed,
