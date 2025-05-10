@@ -27,8 +27,7 @@ class Causaloptim:
             tuple: (lower_bound, upper_bound) from causaloptim
         """
         
-        importr('causaloptim')
-        importr('base')
+       
 
         prob_dict = Causaloptim._extract_prob_dict(df)
 

@@ -1,8 +1,11 @@
 from .base_iv import IVScenario
 from simulation_engine.util.datagen_util import datagen_util
 from simulation_engine.algorithms.causaloptim import Causaloptim
+from linearmodels.iv import IV2SLS
 import numpy as np
 import pandas as pd
+from rpy2.robjects.packages import importr
+
 
 class BinaryIV(IVScenario):
     def __init__(self, dag, dataframe):
@@ -18,6 +21,9 @@ class BinaryIV(IVScenario):
         nvals = [2, 2, 2, 2]
         rlconnect = [0, 0, 0, 0]
         monotone = [0, 0, 0, 0]
+
+        importr('causaloptim')
+        importr('base')
 
         for idx, sim in self.data.iterrows():
             df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
@@ -39,7 +45,49 @@ class BinaryIV(IVScenario):
             self.data.at[idx, 'causaloptim_bound_valid'] = bounds_valid
             self.data.at[idx, 'causaloptim_bound_width'] = bounds_width
 
+    def bound_ate_2SLS(self, ci_level=0.98):
+        """
+        Compute 2SLS bounds for the ATE using the given confidence level.
 
+        Args:
+            ci_level (float): Confidence level for the bounds. Default is 0.98.
+
+        Returns:
+            Void: This method modifies the self.data DataFrame in place.
+        """
+        for idx, sim in self.data.iterrows():
+            df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
+            # Add a constant term for the exogenous variables
+            df['const'] = 1  # Adding a constant column
+
+            # Define the dependent variable (Y), endogenous variable (X), exogenous variable (constant), and instrument (Z)
+            dependent = df['Y']
+            endog = df['X']
+            exog = df[['const']]  # Exogenous variables (constant term)
+            instruments = df['Z']
+
+
+            try:
+                # Perform 2SLS regression
+                model = IV2SLS(dependent, exog, endog, instruments).fit()
+                CI_upper = model.conf_int(level=ci_level).loc['X']['upper']
+                if CI_upper > 1:
+                    CI_upper = 1
+
+                CI_lower = model.conf_int(level=ci_level).loc['X']['lower']
+                if CI_lower < -1:
+                    CI_lower = -1
+            except Exception as e:
+                CI_upper = 1
+                CI_lower = -1
+
+            CI_valid = CI_lower <= sim['ATE_true'] <= CI_upper
+            CI_width = CI_upper - CI_lower
+
+            self.data.at[idx, '2SLS_bound_lower'] = CI_lower
+            self.data.at[idx, '2SLS_bound_upper'] = CI_upper
+            self.data.at[idx, '2SLS_bound_valid'] = CI_valid
+            self.data.at[idx, '2SLS_bound_width'] = CI_width
     
 
     @staticmethod
