@@ -23,14 +23,18 @@ class BinaryIV(IVScenario):
         """
         for idx, sim in self.data.iterrows():
             df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
-
-            bound_lower, bound_upper = AutoBound.run_experiment_binaryIV_ATE(df)
-
-            #Flatten bounds to [2, 2]
-            if bound_upper > 1: 
-                bound_upper = 1
-            if bound_lower < -1: 
+            failed = False
+            try:
+                bound_lower, bound_upper = AutoBound.run_experiment_binaryIV_ATE(df)
+                # Flatten bounds to [2, 2]
+                if bound_upper > 1: 
+                    bound_upper = 1
+                if bound_lower < -1: 
+                    bound_lower = -1
+            except Exception as e:
                 bound_lower = -1
+                bound_upper = 1
+                failed = True
 
             bounds_valid = bound_lower <= sim['ATE_true'] <= bound_upper
             bounds_width = bound_upper - bound_lower
@@ -39,6 +43,7 @@ class BinaryIV(IVScenario):
             self.data.at[idx, 'autobound_bound_upper'] = bound_upper
             self.data.at[idx, 'autobound_bound_valid'] = bounds_valid
             self.data.at[idx, 'autobound_bound_width'] = bounds_width
+            self.data.at[idx, 'autobound_bound_failed'] = failed
 
         
 
@@ -57,15 +62,23 @@ class BinaryIV(IVScenario):
 
         for idx, sim in self.data.iterrows():
             df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
-            bounds = Causaloptim.run_experiment(graph_str, leftside, latent, nvals, rlconnect, monotone, df)
-            bound_lower = float(bounds[0][0])
-            bound_upper = float(bounds[1][0])
+            failed = False
+            try:
+                bounds = Causaloptim.run_experiment(graph_str, leftside, latent, nvals, rlconnect, monotone, df)
+                bound_lower = float(bounds[0][0])
+                bound_upper = float(bounds[1][0])
 
-            #Flatten bounds to [2, 2]
-            if bound_upper > 1: 
-                bound_upper = 1
-            if bound_lower < -1: 
+                #Flatten bounds to [2, 2]
+                if bound_upper > 1: 
+                    bound_upper = 1
+                if bound_lower < -1: 
+                    bound_lower = -1
+            except Exception as e:
                 bound_lower = -1
+                bound_upper = 1
+                failed = True
+
+            
 
             bounds_valid = bound_lower <= sim['ATE_true'] <= bound_upper
             bounds_width = bound_upper - bound_lower
@@ -74,6 +87,8 @@ class BinaryIV(IVScenario):
             self.data.at[idx, 'causaloptim_bound_upper'] = bound_upper
             self.data.at[idx, 'causaloptim_bound_valid'] = bounds_valid
             self.data.at[idx, 'causaloptim_bound_width'] = bounds_width
+            self.data.at[idx, 'causaloptim_bound_failed'] = failed
+
 
     def bound_ate_2SLS(self, ci_level=0.98):
         """
@@ -96,7 +111,7 @@ class BinaryIV(IVScenario):
             exog = df[['const']]  # Exogenous variables (constant term)
             instruments = df['Z']
 
-
+            failed = False
             try:
                 # Perform 2SLS regression
                 model = IV2SLS(dependent, exog, endog, instruments).fit()
@@ -110,6 +125,7 @@ class BinaryIV(IVScenario):
             except Exception as e:
                 CI_upper = 1
                 CI_lower = -1
+                failed = True
 
             CI_valid = CI_lower <= sim['ATE_true'] <= CI_upper
             CI_width = CI_upper - CI_lower
@@ -118,6 +134,7 @@ class BinaryIV(IVScenario):
             self.data.at[idx, '2SLS_bound_upper'] = CI_upper
             self.data.at[idx, '2SLS_bound_valid'] = CI_valid
             self.data.at[idx, '2SLS_bound_width'] = CI_width
+            self.data.at[idx, '2SLS_bound_failed'] = failed
     
 
     @staticmethod

@@ -21,10 +21,18 @@ class PlottingUtil:
         """
         for algorithm in algorithms:
             if f'{algorithm}_bound_valid' in dataframe.columns:
-                invalid_bounds = dataframe[dataframe[f'{algorithm}_bound_valid'] == False].shape[0]
+                failed_bounds = dataframe[dataframe[f'{algorithm}_bound_failed']].shape[0]
+                without_failed = dataframe[dataframe[f'{algorithm}_bound_failed'] == False]
+                invalid_bounds = without_failed[without_failed[f'{algorithm}_bound_valid'] == False].shape[0]
+                without__failed_and_invalid = without_failed[without_failed[f'{algorithm}_bound_valid'] == True]
                 print(f"Algorithm: {algorithm}")
-                print(f"  Bound Width: {dataframe[f'{algorithm}_bound_width'].mean()}")
-                print(f"  Invalid Rate: {invalid_bounds / len(dataframe) * 100:.2f}%")
+                print(f"  Fail Rate: {failed_bounds / len(dataframe) * 100:.2f}%")
+                if failed_bounds > 0:
+                    print(f"  Invalid Rate: {invalid_bounds / failed_bounds * 100:.2f}%")
+                else:
+                    print(f"  Invalid Rate: {invalid_bounds / len(dataframe) * 100:.2f}%")
+
+                print(f"  Net Bound Width: {without__failed_and_invalid[f'{algorithm}_bound_width'].mean()}")
             else:
                 print(f"Algorithm: {algorithm} not found in dataframe columns.")
 
