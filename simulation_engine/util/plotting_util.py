@@ -60,8 +60,8 @@ class PlottingUtil:
             if f'{algorithm}_bound_lower' in df.columns and f'{algorithm}_bound_upper' in df.columns:
                 df[f'{algorithm}_bound_lower_smooth'] = df[f'{algorithm}_bound_lower'].rolling(window=window, center=True).mean()
                 df[f'{algorithm}_bound_upper_smooth'] = df[f'{algorithm}_bound_upper'].rolling(window=window, center=True).mean()
-                sns.lineplot(data=df, x='b_X_Y', y=f'{algorithm}_bound_lower_smooth', label=f'{algorithm} Lower Bound', color=f'C{algorithms.index(algorithm)}')
-                sns.lineplot(data=df, x='b_X_Y', y=f'{algorithm}_bound_upper_smooth', label=f'{algorithm} Upper Bound', color=f'C{algorithms.index(algorithm)}')
+                sns.lineplot(data=df, x='b_X_Y', y=f'{algorithm}_bound_lower_smooth', color=f'C{algorithms.index(algorithm)}')
+                sns.lineplot(data=df, x='b_X_Y', y=f'{algorithm}_bound_upper_smooth', color=f'C{algorithms.index(algorithm)}', label=f'{algorithm} Bounds')
             else:
                 print(f"Warning: Columns for algorithm '{algorithm}' not found in dataframe.")
 
