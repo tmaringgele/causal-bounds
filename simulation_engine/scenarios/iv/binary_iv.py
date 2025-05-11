@@ -1,6 +1,7 @@
 from .base_iv import IVScenario
 from simulation_engine.util.datagen_util import datagen_util
 from simulation_engine.algorithms.causaloptim import Causaloptim
+from simulation_engine.algorithms.autobound import AutoBound
 from linearmodels.iv import IV2SLS
 import numpy as np
 import pandas as pd
@@ -11,6 +12,35 @@ class BinaryIV(IVScenario):
     def __init__(self, dag, dataframe):
         super().__init__(dag)
         self.data = dataframe
+
+    def bound_ate_autobound(self):
+        """
+        Compute autobound bounds for the ATE using the given confidence level.
+        Args:
+            None: This method modifies the self.data DataFrame in place.
+        Returns:
+            Void: This method modifies the self.data DataFrame in place.
+        """
+        for idx, sim in self.data.iterrows():
+            df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
+
+            bound_lower, bound_upper = AutoBound.run_experiment_binaryIV_ATE(df)
+
+            #Flatten bounds to [2, 2]
+            if bound_upper > 1: 
+                bound_upper = 1
+            if bound_lower < -1: 
+                bound_lower = -1
+
+            bounds_valid = bound_lower <= sim['ATE_true'] <= bound_upper
+            bounds_width = bound_upper - bound_lower
+
+            self.data.at[idx, 'autobound_bound_lower'] = bound_lower
+            self.data.at[idx, 'autobound_bound_upper'] = bound_upper
+            self.data.at[idx, 'autobound_bound_valid'] = bounds_valid
+            self.data.at[idx, 'autobound_bound_width'] = bounds_width
+
+        
 
     # enriches self.data with causaloptim bound information
     def bound_ate_causaloptim(self):
