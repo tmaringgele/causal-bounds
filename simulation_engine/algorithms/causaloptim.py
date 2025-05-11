@@ -10,7 +10,7 @@ from rpy2.robjects import IntVector, FloatVector
 class Causaloptim:
 
     @staticmethod
-    def run_experiment(graph_str, leftside, latent, nvals, rlconnect, monotone, df):
+    def _run_experiment(graph_str, leftside, latent, nvals, rlconnect, monotone, df):
         """
         Run a complete causal bounds experiment using R's global environment.
         
