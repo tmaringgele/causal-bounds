@@ -27,10 +27,8 @@ class PlottingUtil:
                 without__failed_and_invalid = without_failed[without_failed[f'{algorithm}_bound_valid'] == True]
                 print(f"Algorithm: {algorithm}")
                 print(f"  Fail Rate: {failed_bounds / len(dataframe) * 100:.2f}%")
-                if failed_bounds > 0:
-                    print(f"  Invalid Rate: {invalid_bounds / failed_bounds * 100:.2f}%")
-                else:
-                    print(f"  Invalid Rate: {invalid_bounds / len(dataframe) * 100:.2f}%")
+
+                print(f"  Invalid Rate: {invalid_bounds / (len(dataframe) - failed_bounds) * 100:.2f}%")
 
                 print(f"  Net Bound Width: {without__failed_and_invalid[f'{algorithm}_bound_width'].mean()}")
             else:
@@ -69,7 +67,7 @@ class PlottingUtil:
                 df[f'{algorithm}_bound_lower_smooth'] = df[f'{algorithm}_bound_lower'].rolling(window=window, center=True).mean()
                 df[f'{algorithm}_bound_upper_smooth'] = df[f'{algorithm}_bound_upper'].rolling(window=window, center=True).mean()
                 sns.lineplot(data=df, x='b_X_Y', y=f'{algorithm}_bound_lower_smooth', color=f'C{algorithms.index(algorithm)}')
-                sns.lineplot(data=df, x='b_X_Y', y=f'{algorithm}_bound_upper_smooth', color=f'C{algorithms.index(algorithm)}', label=f'{algorithm} Bounds')
+                sns.lineplot(data=df, x='b_X_Y', y=f'{algorithm}_bound_upper_smooth', color=f'C{algorithms.index(algorithm)}', label=f'{algorithm}')
             else:
                 print(f"Warning: Columns for algorithm '{algorithm}' not found in dataframe.")
 
