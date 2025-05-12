@@ -1,6 +1,7 @@
 {
     "java.project.sourcePaths": [
-        "zaffalon_bounds"
+        "zaffalon_bounds",
+        "simulation_engine/algorithms/zaffalon"
     ],
     "java.project.referencedLibraries": [
         "zaffalon_bounds\\repo\\lib\\credici.jar"
