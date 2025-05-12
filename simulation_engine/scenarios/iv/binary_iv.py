@@ -107,26 +107,30 @@ class BinaryIV(IVScenario):
         for idx, sim in self.data.iterrows():
             df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
             failed = False
-            try:
-                bounds = Causaloptim.run_experiment(graph_str, leftside, latent, nvals, rlconnect, monotone, df)
-                bound_lower = float(bounds[0][0])
-                bound_upper = float(bounds[1][0])
+            # try:
 
-                #Flatten bounds to [2, 2]
-                if bound_upper > 1: 
-                    bound_upper = 1
-                if bound_lower < -1: 
-                    bound_lower = -1
-            except Exception as e:
-                bound_lower = -1
+            result = Causaloptim.run_experiment(graph_str, leftside, latent, nvals, rlconnect, monotone, df)
+            bound_lower = result['lower_bound']
+            bound_upper = result['upper_bound']
+            failed = result['failed'] 
+            #Flatten bounds to [2, 2]
+            if bound_upper > 1: 
                 bound_upper = 1
-                failed = True
-
+            if bound_lower < -1: 
+                bound_lower = -1
             
+            # except Exception as e:
+            #     failed = True
+
+            # if failed:
+            #     bound_lower = -1
+            #     bound_upper = 1
+
 
             bounds_valid = bound_lower <= sim['ATE_true'] <= bound_upper
             bounds_width = bound_upper - bound_lower
 
+            
             self.data.at[idx, 'causaloptim_bound_lower'] = bound_lower
             self.data.at[idx, 'causaloptim_bound_upper'] = bound_upper
             self.data.at[idx, 'causaloptim_bound_valid'] = bounds_valid

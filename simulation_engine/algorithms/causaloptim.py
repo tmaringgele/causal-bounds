@@ -5,7 +5,9 @@ import rpy2.robjects as robjects
 from rpy2.robjects.environments import Environment
 from rpy2.robjects.packages import importr
 from rpy2.robjects import IntVector, FloatVector
-
+from rpy2.rinterface_lib.callbacks import logger as rpy2_logger
+import logging
+from io import StringIO
 
 class Causaloptim:
 
@@ -26,8 +28,14 @@ class Causaloptim:
         Returns:
             tuple: (lower_bound, upper_bound) from causaloptim
         """
-        
-       
+
+        r_output = StringIO()
+
+        # Set up a custom logger to capture R output
+        handler = logging.StreamHandler(r_output)
+        rpy2_logger.addHandler(handler)
+        rpy2_logger.setLevel(logging.INFO)  # Adjust if necessary
+
 
         prob_dict = Causaloptim._extract_prob_dict(df)
 
@@ -72,9 +80,17 @@ class Causaloptim:
             )
         """)
 
+        failed = False
+        captured = r_output.getvalue()
+        if 'Invalid' in captured:
+            failed = True
+            
         # Fetch and return result
         bounds = r("ATE_bounds")
-        return tuple(bounds)
+        lb = bounds[0][0]
+        ub = bounds[1][0]
+
+        return {'lower_bound': lb, 'upper_bound': ub, 'failed': failed}
 
     @staticmethod
     def _extract_prob_dict(df):
