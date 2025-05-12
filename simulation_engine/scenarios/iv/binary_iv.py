@@ -15,6 +15,54 @@ class BinaryIV(IVScenario):
         super().__init__(dag)
         self.data = dataframe
 
+    def bound_ate_manski(self):
+        """
+        Compute Manski bounds for the ATE using only observed treatment (X) and outcome (Y),
+        with no assumptions on confounding or instruments.
+
+        Returns:
+            Void: This method modifies the self.data DataFrame in place.
+        """
+        for idx, sim in self.data.iterrows():
+            X = np.array(sim['X'])
+            Y = np.array(sim['Y'])
+            failed = False
+
+            try:
+                # Estimate P(Y=1 | T=1) and P(Y=1 | T=0)
+                p1 = np.mean(Y[X == 1]) if np.any(X == 1) else 0.0
+                p0 = np.mean(Y[X == 0]) if np.any(X == 0) else 0.0
+
+                # Slack term
+                slack = 1 - p1 - p0
+
+                # Correct Manski bounds
+                lower = p1 - p0 - slack
+                upper = p1 - p0 + slack
+
+                # Clip bounds to [-1, 1]
+                lower = max(lower, -1)
+                upper = min(upper, 1)
+
+                # Ensure logical ordering
+                lower, upper = min(lower, upper), max(lower, upper)
+
+            except Exception:
+                lower = -1
+                upper = 1
+                failed = True
+
+            bounds_valid = lower <= sim['ATE_true'] <= upper
+            bounds_width = upper - lower
+
+            self.data.at[idx, 'manski_bound_lower'] = lower
+            self.data.at[idx, 'manski_bound_upper'] = upper
+            self.data.at[idx, 'manski_bound_valid'] = bounds_valid
+            self.data.at[idx, 'manski_bound_width'] = bounds_width
+            self.data.at[idx, 'manski_bound_failed'] = failed
+
+
+
     def bound_ate_zaffalon(self):
         """
         Compute entropy bounds for the ATE using the given method and entropy constraint.
