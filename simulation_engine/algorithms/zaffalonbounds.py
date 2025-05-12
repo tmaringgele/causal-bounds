@@ -26,8 +26,15 @@ class ZaffalonBounds:
         BinaryTask = jpype.JClass("binaryIV.BinaryIVAteSimulationTask")
         task = BinaryTask(stream)
         result = task.call()
-
-        return result
+        # result looks like this: '-0.5813,-0.2671'
+        # Convert to tuple of floats
+        try:
+            result_str = str(result)  # Convert java.lang.String to Python str
+            lower, upper = map(float, result_str.strip().split(","))
+            return (lower, upper)
+        except Exception as e:
+            raise ValueError(f"Failed to parse result '{result}': {e}")
+        return (lower, upper)
 
     @staticmethod
     def _dataframe_to_csv_string(df):

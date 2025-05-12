@@ -3,6 +3,7 @@ from simulation_engine.util.datagen_util import datagen_util
 from simulation_engine.algorithms.causaloptim import Causaloptim
 from simulation_engine.algorithms.autobound import AutoBound
 from simulation_engine.algorithms.entropybounds import EntropyBounds
+from simulation_engine.algorithms.zaffalonbounds import ZaffalonBounds
 from linearmodels.iv import IV2SLS
 import numpy as np
 import pandas as pd
@@ -13,6 +14,42 @@ class BinaryIV(IVScenario):
     def __init__(self, dag, dataframe):
         super().__init__(dag)
         self.data = dataframe
+
+    def bound_ate_zaffalon(self):
+        """
+        Compute entropy bounds for the ATE using the given method and entropy constraint.
+
+        Args:
+            method (str): Method to use for computing bounds. Options are 'cf' or 'cp'. Default is 'cf'.
+            entr (float): Upper bound on confounder entropy. Default is 0.5.
+
+        Returns:
+            Void: This method modifies the self.data DataFrame in place.
+        """
+        for idx, sim in self.data.iterrows():
+
+            df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
+            failed = False
+            try:
+                ate_lower, ate_upper = ZaffalonBounds.run_experiment_binaryIV_ATE(df)
+                # Flatten bounds to [2, 2]
+                if ate_upper > 1: 
+                    ate_upper = 1
+                if ate_lower < -1: 
+                    ate_lower = -1
+            except Exception as e:
+                ate_lower = -1
+                ate_upper = 1
+                failed = True
+
+            bounds_valid = ate_lower <= sim['ATE_true'] <= ate_upper
+            bounds_width = ate_upper - ate_lower
+
+            self.data.at[idx, 'zaffalonbounds_bound_lower'] = ate_lower
+            self.data.at[idx, 'zaffalonbounds_bound_upper'] = ate_upper
+            self.data.at[idx, 'zaffalonbounds_bound_valid'] = bounds_valid
+            self.data.at[idx, 'zaffalonbounds_bound_width'] = bounds_width
+            self.data.at[idx, 'zaffalonbounds_bound_failed'] = failed
 
 
     def bound_ate_entropy(self, method="cf", entr=0.5, randomize_theta=False):
