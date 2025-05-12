@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+import statsmodels.formula.api as smf
+import statsmodels.api as sm
+import numpy as np
 
 class PlottingUtil:
     """
@@ -78,4 +81,62 @@ class PlottingUtil:
         plt.ylabel('ATE Value')
         plt.legend()
         plt.grid(True)
+        plt.show()
+
+    @staticmethod
+    def randomized_entropyUB_vs_bound_width(dataframe, entropybound_prefix='entropybounds'):
+        """
+        Plot the randomized entropy upper bound against the bound width.
+
+        Parameters:
+        dataframe (pd.DataFrame): The input dataframe containing entropy bounds with RANDOMIZED theta. 
+        entropybound_prefix (str): The prefix for the entropy bounds columns.
+
+        Returns:
+        None
+        """
+        
+        df_ols = dataframe[
+            (dataframe[f'{entropybound_prefix}_bound_valid']) & 
+            (dataframe[f'{entropybound_prefix}_bound_failed'] == False)
+        ].copy()
+
+        df_ols['theta'] = df_ols[f'{entropybound_prefix}_H(conf)_UB']
+        df_ols['log_theta'] = np.log(df_ols['theta'] + 1e-5)  # Add small value to avoid log(0)
+
+        # Fractional Logit Model with log(theta)
+        model = smf.glm(formula=f"{entropybound_prefix}_bound_width ~ theta + log_theta",
+                        data=df_ols,
+                        family=sm.families.Binomial(link=sm.families.links.logit()))
+        result = model.fit()
+
+
+        print(result.summary())
+
+        # Create prediction grid
+        theta_pred = np.linspace(df_ols['theta'].min(), df_ols['theta'].max(), 300)
+        X_pred = pd.DataFrame({'theta': theta_pred, 'log_theta': np.log(theta_pred + 1e-5)})
+
+        # Predict fitted values
+        y_pred = result.predict(X_pred)
+
+        # Calculate actual entropy 
+        actual_entropy = df_ols['entropy_U'].mean()
+
+        # Scatter plot + fitted curve
+        plt.figure(figsize=(8,6))
+        plt.scatter(dataframe[f'{entropybound_prefix}_H(conf)_UB'], dataframe[f'{entropybound_prefix}_bound_width'], alpha=0.5, label='Valid Bounds')
+        plt.scatter(dataframe[dataframe[f'{entropybound_prefix}_bound_valid'] == False][f'{entropybound_prefix}_H(conf)_UB'],
+                    dataframe[dataframe[f'{entropybound_prefix}_bound_valid'] == False][f'{entropybound_prefix}_bound_width'],
+                    color='red', alpha=0.5, label='Invalid Bounds')
+        # plt.axvline(actual_entropy, color='blue', linestyle='--', label='Actual Entropy')
+        # plt.axvline(0.1, color='purple', linestyle='--', label='θ ∈ {0.05, 0.1}')
+        # plt.axvline(0.05, color='purple', linestyle='--')
+
+        # plt.plot(theta_pred, y_pred, color='green', linewidth=2, label='Fractional Logit Fit')
+        plt.xlabel(r'θ (upper bound for the entropy of U)')
+        plt.ylabel('Bound Width')
+        plt.title(r'θ vs Bound Width')
+        plt.grid(True)
+        plt.legend()
         plt.show()

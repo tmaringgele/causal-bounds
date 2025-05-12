@@ -15,7 +15,7 @@ class BinaryIV(IVScenario):
         self.data = dataframe
 
 
-    def bound_ate_entropy(self, method="cf", entr=0.5):
+    def bound_ate_entropy(self, method="cf", entr=0.5, randomize_theta=False):
         """
         Compute entropy bounds for the ATE using the given method and entropy constraint.
 
@@ -27,10 +27,16 @@ class BinaryIV(IVScenario):
             Void: This method modifies the self.data DataFrame in place.
         """
         for idx, sim in self.data.iterrows():
+            if randomize_theta:
+                # Randomize theta
+                theta = np.random.uniform(0, 1)
+            else:
+                theta = entr
+
             df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
             failed = False
             try:
-                ate_lower, ate_upper = EntropyBounds.run_experiment_binaryIV_ATE(df, entr=entr, method=method)
+                ate_lower, ate_upper = EntropyBounds.run_experiment_binaryIV_ATE(df, entr=theta, method=method)
                 # Flatten bounds to [2, 2]
                 if ate_upper > 1: 
                     ate_upper = 1
@@ -49,6 +55,7 @@ class BinaryIV(IVScenario):
             self.data.at[idx, 'entropybounds_bound_valid'] = bounds_valid
             self.data.at[idx, 'entropybounds_bound_width'] = bounds_width
             self.data.at[idx, 'entropybounds_bound_failed'] = failed
+            self.data.at[idx, 'entropybounds_H(conf)_UB'] = theta
 
     def bound_ate_autobound(self):
         """
@@ -318,5 +325,10 @@ class BinaryIV(IVScenario):
             'Z': Z,
             'U': U,
             'X': X,
-            'Y': Y
+            'Y': Y,
+            'entropy_Z': EntropyBounds.entropy_of_array(Z),
+            'entropy_U': EntropyBounds.entropy_of_array(U),
+            'entropy_X': EntropyBounds.entropy_of_array(X),
+            'entropy_Y': EntropyBounds.entropy_of_array(Y)
+            
         }
