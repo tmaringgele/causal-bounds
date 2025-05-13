@@ -10,13 +10,44 @@ import pandas as pd
 from rpy2.robjects.packages import importr
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
-
+import time
 
 
 class BinaryIV(IVScenario):
     def __init__(self, dag, dataframe):
         super().__init__(dag)
         self.data = dataframe
+
+
+    def run_all_bounding_algorithms(self, algorithms=None):
+        """
+        Run all bounding algorithms and print runtime statistics.
+
+        Args:
+            algorithms (list, optional): List of algorithm names to run. If None, all algorithms are run.
+        """
+        available_algorithms = {
+            "2SLS": self.bound_ate_2SLS,
+            "causaloptim": self.bound_ate_causaloptim,
+            "autobound": self.bound_ate_autobound,
+            "entropy": lambda: self.bound_ate_entropy(entr=0.80),
+            "zaffalon_parallel": self.bound_ate_zaffalon_parallel,
+            "manski": self.bound_ate_manski,
+        }
+
+        if algorithms is None:
+            algorithms = available_algorithms.keys()
+
+        for algo in algorithms:
+            if algo in available_algorithms:
+                print(f"Running {algo}...")
+                start_time = time.time()
+                available_algorithms[algo]()
+                end_time = time.time()
+                print(f"{algo} completed in {end_time - start_time:.2f} seconds.")
+            else:
+                print(f"Algorithm '{algo}' is not recognized.")
+
 
     def bound_ate_manski(self):
         """
@@ -94,7 +125,6 @@ class BinaryIV(IVScenario):
         }
 
     def bound_ate_zaffalon_parallel(self, max_workers=None):
-        print("Running Zaffalon bounds in parallel...")
 
         row_dicts = [row.to_dict() for _, row in self.data.iterrows()]
 
@@ -463,3 +493,4 @@ class BinaryIV(IVScenario):
             'entropy_Y': EntropyBounds.entropy_of_array(Y)
             
         }
+
