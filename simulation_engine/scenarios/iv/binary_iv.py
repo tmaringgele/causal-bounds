@@ -269,11 +269,6 @@ class BinaryIV(IVScenario):
 
         
 
-    # enriches self.data with causaloptim bound information
-    def bound_ate_causaloptim(self):
-        self.data = Causaloptim.bound_binaryIV("ATE", self.data)
-
-
     def bound_ate_2SLS(self, ci_level=0.98):
         """
         Compute 2SLS bounds for the ATE using the given confidence level.
