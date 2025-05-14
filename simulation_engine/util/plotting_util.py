@@ -40,10 +40,10 @@ class PlottingUtil:
     @staticmethod
     def plot_smoothed_ate_vs_bounds(dataframe, algorithms=['autobound'], window=30):
         """
-        Plot smoothed ATE_true and confidence intervals for multiple algorithms from the given dataframe.
+        Plot smoothed ATE_true, PNS_true, and confidence intervals for multiple algorithms from the given dataframe.
 
         Parameters:
-        dataframe (pd.DataFrame): The input dataframe containing columns 'ATE_true', '<algorithm>_bound_lower', '<algorithm>_bound_upper', and 'b_X_Y'.
+        dataframe (pd.DataFrame): The input dataframe containing columns 'ATE_true', 'PNS_true', '<algorithm>_bound_lower', '<algorithm>_bound_upper', and 'b_X_Y'.
         algorithms (list): List of algorithm names to use for bounds (e.g., ['autobound', 'causaloptim']).
         window (int): The size of the rolling window for smoothing. Default is 30.
 
@@ -60,10 +60,12 @@ class PlottingUtil:
 
         # Smoothen the data using a rolling average
         df['ATE_true_smooth'] = df['ATE_true'].rolling(window=window, center=True).mean()
+        df['PNS_true_smooth'] = df['PNS_true'].rolling(window=window, center=True).mean()
 
         # Plot the smoothed data
         plt.figure(figsize=(10, 6))
         sns.lineplot(data=df, x='b_X_Y', y='ATE_true_smooth', label='$ATE_{true}$', color='blue')
+        sns.lineplot(data=df, x='b_X_Y', y='PNS_true_smooth', label='$PNS_{true}$', color='green')
 
         alpha = 0.8
         for algorithm in algorithms:

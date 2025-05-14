@@ -15,6 +15,17 @@ from datetime import datetime
 
 
 class BinaryIV(IVScenario):
+    AVAILABLE_ALGORITHMS = {
+        "2SLS": lambda self: self.bound_ate_2SLS(),
+        "causaloptim": lambda self: self.bound_ate_causaloptim(),
+        "autobound": lambda self: self.bound_ate_autobound(),
+        "entropybounds_0.8": lambda self: self.bound_ate_entropy(entr=0.80),
+        "entropybounds_0.2": lambda self: self.bound_ate_entropy(entr=0.20),
+        "entropybounds_0.1": lambda self: self.bound_ate_entropy(entr=0.10),
+        "zaffalonbounds": lambda self: self.bound_ate_zaffalon_parallel(),
+        "manski": lambda self: self.bound_ate_manski(),
+    }
+
     def __init__(self, dag, dataframe):
         super().__init__(dag)
         self.data = dataframe
@@ -31,14 +42,7 @@ class BinaryIV(IVScenario):
             dict: A dictionary with algorithm runtimes and the current timestamp.
                   Example: {"runtimes": {"2SLS": 1.23, "manski": 0.45}, "timestamp": "2023-03-15T12:34:56"}
         """
-        available_algorithms = {
-            "2SLS": self.bound_ate_2SLS,
-            "causaloptim": self.bound_ate_causaloptim,
-            "autobound": self.bound_ate_autobound,
-            "entropy": lambda: self.bound_ate_entropy(entr=0.80),
-            "zaffalon_parallel": self.bound_ate_zaffalon_parallel,
-            "manski": self.bound_ate_manski,
-        }
+        available_algorithms = self.AVAILABLE_ALGORITHMS
 
         if algorithms is None:
             algorithms = available_algorithms.keys()
@@ -50,7 +54,7 @@ class BinaryIV(IVScenario):
             if algo in available_algorithms:
                 print(f"Running {algo}...")
                 start_time = time.time()
-                available_algorithms[algo]()
+                available_algorithms[algo](self)
                 end_time = time.time()
                 runtime = end_time - start_time
                 runtimes[algo] = runtime
@@ -117,7 +121,6 @@ class BinaryIV(IVScenario):
         import pandas as pd
         try:
             df = pd.DataFrame({'Y': row_dict['Y'], 'X': row_dict['X'], 'Z': row_dict['Z']})
-            from your_module import ZaffalonBounds  # import locally to be safe
             ate_lower, ate_upper = ZaffalonBounds.run_experiment_binaryIV_ATE(df)
 
             ate_lower = max(ate_lower, -1)
@@ -224,12 +227,12 @@ class BinaryIV(IVScenario):
             bounds_valid = ate_lower <= sim['ATE_true'] <= ate_upper
             bounds_width = ate_upper - ate_lower
 
-            self.data.at[idx, 'entropybounds_bound_lower'] = ate_lower
-            self.data.at[idx, 'entropybounds_bound_upper'] = ate_upper
-            self.data.at[idx, 'entropybounds_bound_valid'] = bounds_valid
-            self.data.at[idx, 'entropybounds_bound_width'] = bounds_width
-            self.data.at[idx, 'entropybounds_bound_failed'] = failed
-            self.data.at[idx, 'entropybounds_H(conf)_UB'] = theta
+            theta_rounded = round(theta, 2)
+            self.data.at[idx, 'entropybounds_'+str(theta_rounded)+'_bound_lower'] = ate_lower
+            self.data.at[idx, 'entropybounds_'+str(theta_rounded)+'_bound_upper'] = ate_upper
+            self.data.at[idx, 'entropybounds_'+str(theta_rounded)+'_bound_valid'] = bounds_valid
+            self.data.at[idx, 'entropybounds_'+str(theta_rounded)+'_bound_width'] = bounds_width
+            self.data.at[idx, 'entropybounds_'+str(theta_rounded)+'_bound_failed'] = failed
 
     def bound_ate_autobound(self):
         """
@@ -360,7 +363,7 @@ class BinaryIV(IVScenario):
     
 
     @staticmethod
-    def generate_data_rolling_ate(N_simulations=2000, n=500, seed=None, b_U_X=None, b_U_Y=None, b_Z=None, intercept_X=None, intercept_Y=None):
+    def generate_data_rolling_ate(N_simulations=2000, n=500, seed=None, b_U_X=None, b_U_Y=None, b_Z=None, intercept_X=None, intercept_Y=None, p_U=None, p_Z=None):
         """
         Generate data for a binary instrumental variable scenario.
 
@@ -373,6 +376,8 @@ class BinaryIV(IVScenario):
             b_Z (float): Coefficient for the effect of instrument Z on X. Default is drawn from a bimodal distribution.
             intercept_X (float): Intercept for the logistic model of X. Default is 0.
             intercept_Y (float): Intercept for the logistic model of Y. Default is 0.
+            p_U (float): Probability of unobserved confounder U ~ Bernoulli(p_U). Default is drawn from Uniform(0, 1).
+            p_Z (float): Probability of instrument Z ~ Bernoulli(p_Z). Default is drawn from Uniform(0, 1).
 
         Returns:
             dict: A dictionary containing the generated data and parameters.
@@ -392,7 +397,9 @@ class BinaryIV(IVScenario):
                 b_Z=b_Z,
                 b_X_Y=b_X_Y,
                 intercept_X=intercept_X,
-                intercept_Y=intercept_Y
+                intercept_Y=intercept_Y,
+                p_U=p_U,
+                p_Z=p_Z
             )
             df_results.append(result)
         return pd.DataFrame(df_results)
@@ -434,7 +441,8 @@ class BinaryIV(IVScenario):
                 - b_U_X (float): Coefficient for U on X.
                 - b_X_Y (float): Coefficient for X on Y.
                 - b_U_Y (float): Coefficient for U on Y.
-                - ATE_true (float): True Average Treatment Effect.
+                - ATE_true (float): True Average Treatment Effect of X on Y.
+                - PNS_true (float): True Probability of Necessity and Suffiency of X on Y.
                 - p_Y1 (np.ndarray): Probabilities of Y=1 under treatment.
                 - p_Y0 (np.ndarray): Probabilities of Y=1 under control.
                 - p_U (float): Probability of unobserved confounder U.
@@ -486,6 +494,9 @@ class BinaryIV(IVScenario):
         p_Y1 = 1 / (1 + np.exp(-logit_Y1))
         p_Y0 = 1 / (1 + np.exp(-logit_Y0))
         ATE_true = np.mean(p_Y1 - p_Y0)
+        PNS_i = p_Y1 * (1 - p_Y0)
+        PNS_true = np.mean(PNS_i)
+
 
         return {
             'seed': seed,
@@ -496,6 +507,7 @@ class BinaryIV(IVScenario):
             'b_X_Y': b_X_Y,
             'b_U_Y': b_U_Y,
             'ATE_true': ATE_true,
+            'PNS_true': PNS_true,
             'p_Y1_mean': p_Y1.mean(),
             'p_Y0_mean': p_Y0.mean(),
             'p_U': p_U,
