@@ -17,7 +17,8 @@ from datetime import datetime
 class BinaryIV(IVScenario):
     AVAILABLE_ALGORITHMS = {
         "2SLS": lambda self: self.bound_ate_2SLS(),
-        "causaloptim": lambda self: self.bound_ate_causaloptim(),
+        "ATE_causaloptim": lambda self: Causaloptim.bound_binaryIV("ATE", self.data),
+        "PNS_causaloptim": lambda self: Causaloptim.bound_binaryIV("PNS", self.data),
         "autobound": lambda self: self.bound_ate_autobound(),
         "entropybounds_0.8": lambda self: self.bound_ate_entropy(entr=0.80),
         "entropybounds_0.2": lambda self: self.bound_ate_entropy(entr=0.20),
@@ -270,7 +271,7 @@ class BinaryIV(IVScenario):
 
     # enriches self.data with causaloptim bound information
     def bound_ate_causaloptim(self):
-        self.data = Causaloptim.bound("ATE", self.data)
+        self.data = Causaloptim.bound_binaryIV("ATE", self.data)
 
 
     def bound_ate_2SLS(self, ci_level=0.98):

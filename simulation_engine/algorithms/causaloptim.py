@@ -12,25 +12,9 @@ import pandas as pd
 
 class Causaloptim:
 
-    @staticmethod
-    def bound(query, data):
-        """
-        Compute bounds for the given query using the causaloptim package in R.
 
-        Parameters:
-            query (str): The query string to be used for bounding. For example, "ATE".
-            data (pd.DataFrame): The input data containing columns 'Y', 'X', 'Z'.
-
-        Returns:
-            pd.DataFrame: The input data with additional columns for bounds.
-        """
-        if query == "ATE":
-            return Causaloptim._bound_ATE(data)
-        else:
-            raise ValueError("Unsupported query type. Only 'ATE' is supported.")
-    
     @staticmethod
-    def _bound_ATE(data):
+    def bound_binaryIV(query, data):
         # Define Scenario and target quantity
         graph_str = "(Z -+ X, X -+ Y, Ur -+ X, Ur -+ Y)"
         leftside = [1, 0, 0, 0]
@@ -47,7 +31,7 @@ class Causaloptim:
             failed = False
             # try:
 
-            result = Causaloptim._run_experiment_ATE(graph_str, leftside, latent, nvals, rlconnect, monotone, df)
+            result = Causaloptim._run_experiment(query, graph_str, leftside, latent, nvals, rlconnect, monotone, df)
             bound_lower = result['lower_bound']
             bound_upper = result['upper_bound']
             failed = result['failed'] 
@@ -65,20 +49,20 @@ class Causaloptim:
             #     bound_upper = 1
 
 
-            bounds_valid = bound_lower <= sim['ATE_true'] <= bound_upper
+            bounds_valid = bound_lower <= sim[query+'_true'] <= bound_upper
             bounds_width = bound_upper - bound_lower
 
             
-            data.at[idx, 'causaloptim_bound_lower'] = bound_lower
-            data.at[idx, 'causaloptim_bound_upper'] = bound_upper
-            data.at[idx, 'causaloptim_bound_valid'] = bounds_valid
-            data.at[idx, 'causaloptim_bound_width'] = bounds_width
-            data.at[idx, 'causaloptim_bound_failed'] = failed
+            data.at[idx, query+'_causaloptim_bound_lower'] = bound_lower
+            data.at[idx, query+'_causaloptim_bound_upper'] = bound_upper
+            data.at[idx, query+'_causaloptim_bound_valid'] = bounds_valid
+            data.at[idx, query+'_causaloptim_bound_width'] = bounds_width
+            data.at[idx, query+'_causaloptim_bound_failed'] = failed
 
         return data
 
     @staticmethod
-    def _run_experiment_ATE(graph_str, leftside, latent, nvals, rlconnect, monotone, df):
+    def _run_experiment(query, graph_str, leftside, latent, nvals, rlconnect, monotone, df):
         """
         Run a complete causal bounds experiment using R's global environment.
         
@@ -132,13 +116,24 @@ class Causaloptim:
         for key, val in prob_dict.items():
             globalenv[key] = FloatVector([val])
 
+        if query == "ATE":
+            r("""
+                query <- "p{Y(X = 1) = 1} - p{Y(X = 0) = 1}"
+              """)
+        elif query == "PNS":
+            r("""
+                query <- "p{Y(X = 1) = 1; Y(X = 0) = 0}"
+              """)
+        else:
+            raise ValueError("Query must be either 'ATE' or 'PNS'")
+
+
         # Compute bounds
         r("""
-            riskdiff <- "p{Y(X = 1) = 1} - p{Y(X = 0) = 1}"
-            obj <- analyze_graph(graph, constraints = NULL, effectt = riskdiff)
+            obj <- analyze_graph(graph, constraints = NULL, effectt = query)
             bounds <- optimize_effect_2(obj)
             boundsfunc <- interpret_bounds(bounds = bounds$bounds, obj$parameters)
-            ATE_bounds <- boundsfunc(
+            bounds_result <- boundsfunc(
             p00_0 = p00_0, p00_1 = p00_1,
             p10_0 = p10_0, p10_1 = p10_1,
             p01_0 = p01_0, p01_1 = p01_1,
@@ -152,7 +147,7 @@ class Causaloptim:
             failed = True
             
         # Fetch and return result
-        bounds = r("ATE_bounds")
+        bounds = r("bounds_result")
         lb = bounds[0][0]
         ub = bounds[1][0]
 
