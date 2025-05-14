@@ -270,49 +270,7 @@ class BinaryIV(IVScenario):
 
     # enriches self.data with causaloptim bound information
     def bound_ate_causaloptim(self):
-        # Define Scenario and target quantity
-        graph_str = "(Z -+ X, X -+ Y, Ur -+ X, Ur -+ Y)"
-        leftside = [1, 0, 0, 0]
-        latent = [0, 0, 0, 1]
-        nvals = [2, 2, 2, 2]
-        rlconnect = [0, 0, 0, 0]
-        monotone = [0, 0, 0, 0]
-
-        importr('causaloptim')
-        importr('base')
-
-        for idx, sim in self.data.iterrows():
-            df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
-            failed = False
-            # try:
-
-            result = Causaloptim.run_experiment(graph_str, leftside, latent, nvals, rlconnect, monotone, df)
-            bound_lower = result['lower_bound']
-            bound_upper = result['upper_bound']
-            failed = result['failed'] 
-            #Flatten bounds to [2, 2]
-            if bound_upper > 1: 
-                bound_upper = 1
-            if bound_lower < -1: 
-                bound_lower = -1
-            
-            # except Exception as e:
-            #     failed = True
-
-            # if failed:
-            #     bound_lower = -1
-            #     bound_upper = 1
-
-
-            bounds_valid = bound_lower <= sim['ATE_true'] <= bound_upper
-            bounds_width = bound_upper - bound_lower
-
-            
-            self.data.at[idx, 'causaloptim_bound_lower'] = bound_lower
-            self.data.at[idx, 'causaloptim_bound_upper'] = bound_upper
-            self.data.at[idx, 'causaloptim_bound_valid'] = bounds_valid
-            self.data.at[idx, 'causaloptim_bound_width'] = bounds_width
-            self.data.at[idx, 'causaloptim_bound_failed'] = failed
+        self.data = Causaloptim.bound("ATE", self.data)
 
 
     def bound_ate_2SLS(self, ci_level=0.98):
@@ -389,7 +347,7 @@ class BinaryIV(IVScenario):
         step_size = (5 - (-5)) / N_simulations
 
         for b_X_Y in np.arange(-5, 5, step_size):
-            result = BinaryIV._simulate_deterministic_data_with_probabilistic_ate(
+            result = BinaryIV._simulate_deterministic_data(
                 n=n,
                 seed=seed,
                 b_U_X=b_U_X,
@@ -404,7 +362,7 @@ class BinaryIV(IVScenario):
             df_results.append(result)
         return pd.DataFrame(df_results)
 
-    def _simulate_deterministic_data_with_probabilistic_ate(
+    def _simulate_deterministic_data(
         n=500,
         seed= None,
         b_U_X=None,
@@ -417,8 +375,7 @@ class BinaryIV(IVScenario):
         p_Z = None
     ):
         """
-        Simulate deterministic (binary) data for causal analysis, 
-        while computing the Average Treatment Effect (ATE) from smooth logistic potential outcome probabilities.
+        Simulate deterministic (binary) data for causal analysis.
 
         Args:
             n (int): Number of samples to generate. Default is 500.

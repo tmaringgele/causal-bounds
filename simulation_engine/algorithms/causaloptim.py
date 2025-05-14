@@ -8,11 +8,77 @@ from rpy2.robjects import IntVector, FloatVector
 from rpy2.rinterface_lib.callbacks import logger as rpy2_logger
 import logging
 from io import StringIO
+import pandas as pd
 
 class Causaloptim:
 
     @staticmethod
-    def run_experiment(graph_str, leftside, latent, nvals, rlconnect, monotone, df):
+    def bound(query, data):
+        """
+        Compute bounds for the given query using the causaloptim package in R.
+
+        Parameters:
+            query (str): The query string to be used for bounding. For example, "ATE".
+            data (pd.DataFrame): The input data containing columns 'Y', 'X', 'Z'.
+
+        Returns:
+            pd.DataFrame: The input data with additional columns for bounds.
+        """
+        if query == "ATE":
+            return Causaloptim._bound_ATE(data)
+        else:
+            raise ValueError("Unsupported query type. Only 'ATE' is supported.")
+    
+    @staticmethod
+    def _bound_ATE(data):
+        # Define Scenario and target quantity
+        graph_str = "(Z -+ X, X -+ Y, Ur -+ X, Ur -+ Y)"
+        leftside = [1, 0, 0, 0]
+        latent = [0, 0, 0, 1]
+        nvals = [2, 2, 2, 2]
+        rlconnect = [0, 0, 0, 0]
+        monotone = [0, 0, 0, 0]
+
+        importr('causaloptim')
+        importr('base')
+
+        for idx, sim in data.iterrows():
+            df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
+            failed = False
+            # try:
+
+            result = Causaloptim._run_experiment_ATE(graph_str, leftside, latent, nvals, rlconnect, monotone, df)
+            bound_lower = result['lower_bound']
+            bound_upper = result['upper_bound']
+            failed = result['failed'] 
+            #Flatten bounds to [2, 2]
+            if bound_upper > 1: 
+                bound_upper = 1
+            if bound_lower < -1: 
+                bound_lower = -1
+            
+            # except Exception as e:
+            #     failed = True
+
+            # if failed:
+            #     bound_lower = -1
+            #     bound_upper = 1
+
+
+            bounds_valid = bound_lower <= sim['ATE_true'] <= bound_upper
+            bounds_width = bound_upper - bound_lower
+
+            
+            data.at[idx, 'causaloptim_bound_lower'] = bound_lower
+            data.at[idx, 'causaloptim_bound_upper'] = bound_upper
+            data.at[idx, 'causaloptim_bound_valid'] = bounds_valid
+            data.at[idx, 'causaloptim_bound_width'] = bounds_width
+            data.at[idx, 'causaloptim_bound_failed'] = failed
+
+        return data
+
+    @staticmethod
+    def _run_experiment_ATE(graph_str, leftside, latent, nvals, rlconnect, monotone, df):
         """
         Run a complete causal bounds experiment using R's global environment.
         
