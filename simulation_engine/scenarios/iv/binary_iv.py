@@ -42,6 +42,8 @@ class BinaryIV(IVScenario):
         "entropybounds_0.2": lambda self: self.bound_ate_entropy(entr=0.20),
         "entropybounds_0.1": lambda self: self.bound_ate_entropy(entr=0.10),
         "ATE_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "ATE"),
+        "PNS_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "PNS"),
+
         "manski": lambda self: self.bound_ate_manski(),
     }
 
