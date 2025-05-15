@@ -21,8 +21,8 @@ public class BinaryIVAteSimulationTask implements Callable<String> {
         int Z = 0, X = 1, Y = 2, U = 3;
 
         try {
-            TIntIntMap[] data = AteBounds.getDataFromCSV(inputCSV, Z, X, Y, b_X_Y_1000);
-            double[] bounds = AteBounds.getBoundsForBinaryIV(data, 100, 30, "ate", Z, X, Y, U);
+            TIntIntMap[] data = BinaryIVBounds.getDataFromCSV(inputCSV, Z, X, Y, b_X_Y_1000);
+            double[] bounds = BinaryIVBounds.getBoundsForBinaryIV(data, 100, 30, "ate", Z, X, Y, U);
 
             return String.format("%d,%.4f,%.4f", b_X_Y_1000, bounds[0], bounds[1]);
         } catch (Exception e) {

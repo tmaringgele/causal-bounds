@@ -8,8 +8,7 @@ from linearmodels.iv import IV2SLS
 import numpy as np
 import pandas as pd
 from rpy2.robjects.packages import importr
-from concurrent.futures import ProcessPoolExecutor
-from functools import partial
+
 import time
 from datetime import datetime
 
@@ -42,7 +41,7 @@ class BinaryIV(IVScenario):
         "entropybounds_0.8": lambda self: self.bound_ate_entropy(entr=0.80),
         "entropybounds_0.2": lambda self: self.bound_ate_entropy(entr=0.20),
         "entropybounds_0.1": lambda self: self.bound_ate_entropy(entr=0.10),
-        "zaffalonbounds": lambda self: self.bound_ate_zaffalon_parallel(),
+        "ATE_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "ATE"),
         "manski": lambda self: self.bound_ate_manski(),
     }
 
@@ -136,43 +135,6 @@ class BinaryIV(IVScenario):
             self.data.at[idx, 'manski_bound_width'] = bounds_width
             self.data.at[idx, 'manski_bound_failed'] = failed
 
-    @staticmethod
-    def _run_zaffalon_from_row_dict(row_dict):
-        import pandas as pd
-        try:
-            df = pd.DataFrame({'Y': row_dict['Y'], 'X': row_dict['X'], 'Z': row_dict['Z']})
-            ate_lower, ate_upper = ZaffalonBounds.run_experiment_binaryIV_ATE(df)
-
-            ate_lower = max(ate_lower, -1)
-            ate_upper = min(ate_upper, 1)
-
-            bounds_valid = ate_lower <= row_dict['ATE_true'] <= ate_upper
-            bounds_width = ate_upper - ate_lower
-            failed = False
-
-        except Exception:
-            ate_lower, ate_upper = -1, 1
-            bounds_valid = False
-            bounds_width = 2
-            failed = True
-
-        return {
-            'zaffalonbounds_bound_lower': ate_lower,
-            'zaffalonbounds_bound_upper': ate_upper,
-            'zaffalonbounds_bound_valid': bounds_valid,
-            'zaffalonbounds_bound_width': bounds_width,
-            'zaffalonbounds_bound_failed': failed
-        }
-
-    def bound_ate_zaffalon_parallel(self, max_workers=None):
-
-        row_dicts = [row.to_dict() for _, row in self.data.iterrows()]
-
-        with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            results = list(executor.map(BinaryIV._run_zaffalon_from_row_dict, row_dicts))
-
-        results_df = pd.DataFrame(results)
-        self.data = pd.concat([self.data.reset_index(drop=True), results_df], axis=1)
 
 
     def bound_ate_zaffalon(self):

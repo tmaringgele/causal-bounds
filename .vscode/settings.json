@@ -4,6 +4,6 @@
         "simulation_engine/algorithms/zaffalon"
     ],
     "java.project.referencedLibraries": [
-        "zaffalon_bounds\\repo\\lib\\credici.jar"
+        "simulation_engine/algorithms/zaffalon/credici.jar",
     ]
 }

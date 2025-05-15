@@ -4,7 +4,7 @@ import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import binaryIV.BinaryIVAteSimulationTask;
+import binaryIV.BinaryIVTask;
 
 public class ParallelRunner {
     public static void main(String[] args) throws Exception {
@@ -26,7 +26,7 @@ public class ParallelRunner {
 
         for (int i = 0; i < N_INSTANCES; i++) {
             int b = START_B + i * STEP;
-            completionService.submit(new BinaryIVAteSimulationTask(b, inputCSV));
+            completionService.submit(new BinaryIVTask(b, inputCSV));
         }
 
         // Write all results as they complete

@@ -34,7 +34,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 
-public class AteBounds {
+public class BinaryIVBounds {
     public static TIntIntMap[] getDataFromCSV(InputStream inputStream, int Z, int X, int Y) throws Exception {
         List<TIntIntMap> dataList = new ArrayList<>();
         try (Reader reader = new InputStreamReader(inputStream);
@@ -87,7 +87,7 @@ public class AteBounds {
         CausalMultiVE multiVE = new CausalMultiVE(modelSet);
 
 
-        if(query.equals("pns")){
+        if(query.equals("PNS")){
         // Query 1: Probability of Necessity and Sufficiency for X->Y
         VertexFactor pnsFactor = (VertexFactor) multiVE.probNecessityAndSufficiency(X, Y);
         // Extract lower and upper values for PNS from the VertexFactor
@@ -95,7 +95,7 @@ public class AteBounds {
         double pnsUpper = pnsFactor.getData()[0][1][0];
         double[] pnsBounds = new double[] { pnsLower, pnsUpper };
         return pnsBounds;
-        } else if(query.equals("ate")){
+        } else if(query.equals("ATE")){
 
         // Query 2: Bounds on ATE = P(Y|do X=1) – P(Y|do X=0)
         VertexFactor ace = (VertexFactor) multiVE.averageCausalEffects(X, Y, 1, 1, 0);
