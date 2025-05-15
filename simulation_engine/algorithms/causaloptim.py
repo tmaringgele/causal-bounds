@@ -12,17 +12,15 @@ import pandas as pd
 
 class Causaloptim:
 
-
     @staticmethod
-    def bound_binaryIV(query, data):
+    def bound(query, data, 
+                       graph_str="(Z -+ X, X -+ Y, Ur -+ X, Ur -+ Y)", 
+                       leftside=[1, 0, 0, 0], 
+                       latent=[0, 0, 0, 1], 
+                       nvals=[2, 2, 2, 2], 
+                       rlconnect=[0, 0, 0, 0], 
+                       monotone=[0, 0, 0, 0]):
         # Define Scenario and target quantity
-        graph_str = "(Z -+ X, X -+ Y, Ur -+ X, Ur -+ Y)"
-        leftside = [1, 0, 0, 0]
-        latent = [0, 0, 0, 1]
-        nvals = [2, 2, 2, 2]
-        rlconnect = [0, 0, 0, 0]
-        monotone = [0, 0, 0, 0]
-
         importr('causaloptim')
         importr('base')
 

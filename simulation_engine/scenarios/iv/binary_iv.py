@@ -17,9 +17,28 @@ from datetime import datetime
 class BinaryIV(IVScenario):
     AVAILABLE_ALGORITHMS = {
         "2SLS": lambda self: self.bound_ate_2SLS(),
-        "ATE_causaloptim": lambda self: Causaloptim.bound_binaryIV("ATE", self.data),
-        "PNS_causaloptim": lambda self: Causaloptim.bound_binaryIV("PNS", self.data),
-        "autobound": lambda self: self.bound_ate_autobound(),
+        "ATE_causaloptim": lambda self: Causaloptim.bound("ATE", self.data, 
+                       graph_str="(Z -+ X, X -+ Y, Ur -+ X, Ur -+ Y)", 
+                       leftside=[1, 0, 0, 0], 
+                       latent=[0, 0, 0, 1], 
+                       nvals=[2, 2, 2, 2], 
+                       rlconnect=[0, 0, 0, 0], 
+                       monotone=[0, 0, 0, 0]),
+        "PNS_causaloptim": lambda self: Causaloptim.bound("PNS", self.data,
+                       graph_str="(Z -+ X, X -+ Y, Ur -+ X, Ur -+ Y)", 
+                       leftside=[1, 0, 0, 0], 
+                       latent=[0, 0, 0, 1], 
+                       nvals=[2, 2, 2, 2], 
+                       rlconnect=[0, 0, 0, 0], 
+                       monotone=[0, 0, 0, 0]),
+        "ATE_autobound": lambda self: AutoBound.bound_binaryIV("ATE", self.data, 
+                        dagstring="Z -> X, X -> Y, U -> X, U -> Y",
+                        unob="U",
+                        ),
+        "PNS_autobound": lambda self: AutoBound.bound_binaryIV("PNS", self.data, 
+                        dagstring="Z -> X, X -> Y, U -> X, U -> Y",
+                        unob="U",
+                        ),
         "entropybounds_0.8": lambda self: self.bound_ate_entropy(entr=0.80),
         "entropybounds_0.2": lambda self: self.bound_ate_entropy(entr=0.20),
         "entropybounds_0.1": lambda self: self.bound_ate_entropy(entr=0.10),
@@ -235,37 +254,7 @@ class BinaryIV(IVScenario):
             self.data.at[idx, 'entropybounds_'+str(theta_rounded)+'_bound_width'] = bounds_width
             self.data.at[idx, 'entropybounds_'+str(theta_rounded)+'_bound_failed'] = failed
 
-    def bound_ate_autobound(self):
-        """
-        Compute autobound bounds for the ATE using the given confidence level.
-        Args:
-            None: This method modifies the self.data DataFrame in place.
-        Returns:
-            Void: This method modifies the self.data DataFrame in place.
-        """
-        for idx, sim in self.data.iterrows():
-            df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
-            failed = False
-            try:
-                bound_lower, bound_upper = AutoBound.run_experiment_binaryIV_ATE(df)
-                # Flatten bounds to [2, 2]
-                if bound_upper > 1: 
-                    bound_upper = 1
-                if bound_lower < -1: 
-                    bound_lower = -1
-            except Exception as e:
-                bound_lower = -1
-                bound_upper = 1
-                failed = True
 
-            bounds_valid = bound_lower <= sim['ATE_true'] <= bound_upper
-            bounds_width = bound_upper - bound_lower
-
-            self.data.at[idx, 'autobound_bound_lower'] = bound_lower
-            self.data.at[idx, 'autobound_bound_upper'] = bound_upper
-            self.data.at[idx, 'autobound_bound_valid'] = bounds_valid
-            self.data.at[idx, 'autobound_bound_width'] = bounds_width
-            self.data.at[idx, 'autobound_bound_failed'] = failed
 
         
 

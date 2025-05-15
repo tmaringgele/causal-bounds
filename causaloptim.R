@@ -46,3 +46,4 @@ boundsfunction(p00_0 = p00_0, p00_1 = p00_1,
                p01_0 = p01_0, p01_1 = p01_1, 
                p11_0 = p11_0, p11_1 = p11_1)
 
+help("causaloptim")

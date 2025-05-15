@@ -38,12 +38,13 @@ class PlottingUtil:
                 print(f"Algorithm: {algorithm} not found in dataframe columns.")
 
     @staticmethod
-    def plot_smoothed_ate_vs_bounds(dataframe, algorithms=['autobound'], window=30):
+    def plot_smoothed_query_vs_bounds(dataframe, query, algorithms=['autobound'], window=1, zeroline=False):
         """
-        Plot smoothed ATE_true, PNS_true, and confidence intervals for multiple algorithms from the given dataframe.
+        Plot smoothed <query>_true and confidence intervals for multiple algorithms from the given dataframe.
 
         Parameters:
-        dataframe (pd.DataFrame): The input dataframe containing columns 'ATE_true', 'PNS_true', '<algorithm>_bound_lower', '<algorithm>_bound_upper', and 'b_X_Y'.
+        dataframe (pd.DataFrame): The input dataframe containing columns '<query>_true', '<algorithm>_bound_lower', '<algorithm>_bound_upper', and 'b_X_Y'.
+        query (str): The query type (e.g., 'ATE' or 'PNS') to plot.
         algorithms (list): List of algorithm names to use for bounds (e.g., ['autobound', 'causaloptim']).
         window (int): The size of the rolling window for smoothing. Default is 30.
 
@@ -59,13 +60,11 @@ class PlottingUtil:
             return
 
         # Smoothen the data using a rolling average
-        df['ATE_true_smooth'] = df['ATE_true'].rolling(window=window, center=True).mean()
-        df['PNS_true_smooth'] = df['PNS_true'].rolling(window=window, center=True).mean()
+        df[f'{query}_true_smooth'] = df[f'{query}_true'].rolling(window=window, center=True).mean()
 
         # Plot the smoothed data
         plt.figure(figsize=(10, 6))
-        sns.lineplot(data=df, x='b_X_Y', y='ATE_true_smooth', label='$ATE_{true}$', color='blue')
-        sns.lineplot(data=df, x='b_X_Y', y='PNS_true_smooth', label='$PNS_{true}$', color='green')
+        sns.lineplot(data=df, x='b_X_Y', y=f'{query}_true_smooth', label=f'${query}_{{true}}$', color='blue')
 
         alpha = 0.8
         for algorithm in algorithms:
@@ -77,10 +76,11 @@ class PlottingUtil:
             else:
                 print(f"Warning: Columns for algorithm '{algorithm}' not found in dataframe.")
 
-        plt.axhline(0, color='red', linestyle='--', label='Zero Line')
-        plt.title('Algorithms vs $ATE_{true}$ (smoothed out)')
+        if zeroline:
+            plt.axhline(0, color='red', linestyle='--', label='Zero Line')
+        plt.title(f'Algorithms vs ${query}_{{true}}$ (smoothed out)')
         plt.xlabel('b_X_Y Coefficient')
-        plt.ylabel('ATE Value')
+        plt.ylabel(f'{query} Value')
         plt.legend()
         plt.grid(True)
         plt.show()
