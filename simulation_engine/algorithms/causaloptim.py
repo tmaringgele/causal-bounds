@@ -9,6 +9,7 @@ from rpy2.rinterface_lib.callbacks import logger as rpy2_logger
 import logging
 from io import StringIO
 import pandas as pd
+from simulation_engine.util.alg_util import AlgUtil
 
 class Causaloptim:
 
@@ -27,24 +28,20 @@ class Causaloptim:
         for idx, sim in data.iterrows():
             df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
             failed = False
-            # try:
+            try:
+                result = Causaloptim._run_experiment(query, graph_str, leftside, latent, nvals, rlconnect, monotone, df)
+                bound_lower = result['lower_bound']
+                bound_upper = result['upper_bound']
+                failed = result['failed'] 
+            except Exception as e:
+                print(f"Error in Causaloptim: {e}")
+                failed = True
 
-            result = Causaloptim._run_experiment(query, graph_str, leftside, latent, nvals, rlconnect, monotone, df)
-            bound_lower = result['lower_bound']
-            bound_upper = result['upper_bound']
-            failed = result['failed'] 
-            #Flatten bounds to [2, 2]
-            if bound_upper > 1: 
-                bound_upper = 1
-            if bound_lower < -1: 
-                bound_lower = -1
-            
-            # except Exception as e:
-            #     failed = True
-
-            # if failed:
-            #     bound_lower = -1
-            #     bound_upper = 1
+            #Flatten bounds to trivial ceils
+            if failed | (bound_upper > AlgUtil.get_trivial_Ceils(query)[1]):
+                bound_upper = AlgUtil.get_trivial_Ceils(query)[1] 
+            if failed | (bound_lower < AlgUtil.get_trivial_Ceils(query)[0]): 
+                bound_lower = AlgUtil.get_trivial_Ceils(query)[0]
 
 
             bounds_valid = bound_lower <= sim[query+'_true'] <= bound_upper

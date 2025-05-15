@@ -1,6 +1,7 @@
 from autobound.causalProblem import causalProblem
 from autobound.DAG import DAG
 import pandas as pd
+from simulation_engine.util.alg_util import AlgUtil
 
 class AutoBound:
     """
@@ -15,16 +16,16 @@ class AutoBound:
             try:
                 joint_probs = AutoBound._compute_joint_probabilities_IV(df)
                 bound_lower, bound_upper = AutoBound.run_experiment_binaryIV(query, dagstring, unob, joint_probs)
-                # Flatten bounds to [2, 2]
-                if bound_upper > 1: 
-                    bound_upper = 1
-                if bound_lower < -1: 
-                    bound_lower = -1
+
             except Exception as e:
                 print(f"Error in AutoBound: {e}")
-                bound_lower = -1
-                bound_upper = 1
                 failed = True
+            
+            #Flatten bounds to trivial ceils
+            if failed | (bound_upper > AlgUtil.get_trivial_Ceils(query)[1]):
+                bound_upper = AlgUtil.get_trivial_Ceils(query)[1] 
+            if failed | (bound_lower < AlgUtil.get_trivial_Ceils(query)[0]): 
+                bound_lower = AlgUtil.get_trivial_Ceils(query)[0]
 
             bounds_valid = bound_lower <= sim[query+'_true'] <= bound_upper
             bounds_width = bound_upper - bound_lower
