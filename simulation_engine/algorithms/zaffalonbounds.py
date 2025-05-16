@@ -66,7 +66,6 @@ class ZaffalonBounds:
         jar_zaffalon = os.path.join(this_dir, "zaffalon", "binaryIV", "zaffalon.jar")
         jar_credici = os.path.join(this_dir, "zaffalon", "credici.jar")
         if not jpype.isJVMStarted():
-            print("JVM started with classpath:", [jar_zaffalon, jar_credici])
             jpype.startJVM(classpath=[jar_zaffalon, jar_credici])
 
         csv_data = ZaffalonBounds._dataframe_to_csv_string(df)
@@ -81,7 +80,6 @@ class ZaffalonBounds:
         BinaryTask = jpype.JClass("binaryIV.BinaryIVTask")
         task = BinaryTask(stream, query)
         result = task.call()
-        print (f"Result from Zaffalon: {result}")
         # result looks like this: '-0.5813,-0.2671'
         # Convert to tuple of floats
         result_str = str(result)  # Convert java.lang.String to Python str
