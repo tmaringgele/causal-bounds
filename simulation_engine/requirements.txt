@@ -4,3 +4,7 @@ numpy
 jpype1
 scipy
 pyyaml
+statsmodels
+rpy2
+./../autobound
+cvxpy
