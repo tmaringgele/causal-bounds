@@ -43,12 +43,12 @@ class BinaryIV(IVScenario):
                         unob="U",
                         ),
                         
-        "ATE_entropybounds_0.80": lambda self: self.bound_entropy(entr=0.80, query='ATE'),
-        "ATE_entropybounds_0.20": lambda self: self.bound_entropy(entr=0.20, query='ATE'),
-        "ATE_entropybounds_0.10": lambda self: self.bound_entropy(entr=0.10, query='ATE'),
-        "PNS_entropybounds_0.80": lambda self: self.bound_entropy(entr=0.80, query='PNS'),
-        "PNS_entropybounds_0.20": lambda self: self.bound_entropy(entr=0.20, query='PNS'),
-        "PNS_entropybounds_0.10": lambda self: self.bound_entropy(entr=0.10, query='PNS'),
+        "ATE_entropybounds_0.80": lambda self: EntropyBounds.bound(self.data, 0.80, 'ATE'),
+        "ATE_entropybounds_0.20": lambda self: EntropyBounds.bound(self.data, 0.20, 'ATE'),
+        "ATE_entropybounds_0.10": lambda self: EntropyBounds.bound(self.data, 0.10, 'ATE'),
+        "PNS_entropybounds_0.80": lambda self: EntropyBounds.bound(self.data, 0.80, 'PNS'),
+        "PNS_entropybounds_0.20": lambda self: EntropyBounds.bound(self.data, 0.20, 'PNS'),
+        "PNS_entropybounds_0.10": lambda self: EntropyBounds.bound(self.data, 0.10, 'PNS'),
 
         "ATE_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "ATE"),
         "PNS_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "PNS"),
@@ -61,6 +61,24 @@ class BinaryIV(IVScenario):
     def __init__(self, dag, dataframe):
         super().__init__(dag)
         self.data = dataframe
+
+    def get_algorithms(self, query):
+        """
+        Get the available algorithms for a given query.
+
+        Args:
+            query (str): The query type (e.g., 'ATE' or 'PNS').
+
+        Returns:
+            list: A list of available algorithms for the specified query.
+        """
+        if query == 'ATE':
+            return [alg for alg in self.AVAILABLE_ALGORITHMS.keys() if alg.startswith('ATE')]
+        elif query == 'PNS':
+            return [alg for alg in self.AVAILABLE_ALGORITHMS.keys() if alg.startswith('PNS')]
+        else:
+            # If query is not 'ATE' or 'PNS', return all algorithms
+            return list(self.AVAILABLE_ALGORITHMS.keys())
 
 
     def run_all_bounding_algorithms(self, algorithms=None):

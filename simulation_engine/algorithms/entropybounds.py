@@ -2,14 +2,66 @@ import numpy as np
 import math
 import numpy as np
 import cvxpy as cp
+import pandas as pd
+
+from simulation_engine.util.alg_util import AlgUtil
 
 class EntropyBounds:
     """
     Class to calculate the entropy bounds for a given set of probabilities.
     Code taken from: 
     https://github.com/ziwei-jiang/Approximate-Causal-Effect-Identification-under-Weak-Confounding
+    The PNS bounds are my own extension.
 
     """
+    
+    def bound(data, theta=0.5, query='ATE', method="cf",  randomize_theta=False):
+        """
+        Compute entropy bounds for the ATE using the given method and entropy constraint.
+
+        Args:
+            method (str): Method to use for computing bounds. Options are 'cf' or 'cp'. Default is 'cf'.
+            entr (float): Upper bound on confounder entropy. Default is 0.5.
+            query (str): The query type (e.g., 'ATE' or 'PNS') to compute bounds for.
+
+        Returns:
+            Void: This method modifies the data DataFrame in place.
+        """
+        assert method in {'cf', 'cp'}, "Method must be either 'cf' or 'cp'"
+        assert query in {'ATE', 'PNS'}, "Query must be either 'ATE' or 'PNS'"
+
+        for idx, sim in data.iterrows():
+            if randomize_theta:
+                # Randomize theta
+                theta = np.random.uniform(0, 1)
+
+            df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
+            failed = False
+            
+            # try:
+            bound_lower, bound_upper = EntropyBounds.run_experiment_binaryIV(df, theta, query, method)
+                
+            # except Exception as e:
+            #     failed = True
+            
+            #Flatten bounds to trivial ceils
+            if failed | (bound_upper > AlgUtil.get_trivial_Ceils(query)[1]):
+                bound_upper = AlgUtil.get_trivial_Ceils(query)[1] 
+            if failed | (bound_lower < AlgUtil.get_trivial_Ceils(query)[0]): 
+                bound_lower = AlgUtil.get_trivial_Ceils(query)[0]
+
+
+            bounds_valid = bound_lower <= sim[query+'_true'] <= bound_upper
+            bounds_width = bound_upper - bound_lower
+
+            theta_rounded = f"{theta:.2f}"  # Always show two decimal places, e.g., 0.50
+            data.at[idx, f"{query}_entropybounds_{theta_rounded}_bound_lower"] = bound_lower
+            data.at[idx, f"{query}_entropybounds_{theta_rounded}_bound_upper"] = bound_upper
+            data.at[idx, f"{query}_entropybounds_{theta_rounded}_bound_valid"] = bounds_valid
+            data.at[idx, f"{query}_entropybounds_{theta_rounded}_bound_width"] = bounds_width
+            data.at[idx, f"{query}_entropybounds_{theta_rounded}_bound_failed"] = failed
+
+
     @staticmethod
     def run_experiment_binaryIV(df, entr, query, method="cf"):
         """
