@@ -11,7 +11,7 @@ class EntropyBounds:
 
     """
     @staticmethod
-    def run_experiment_binaryIV_ATE(df, entr, method="cf"):
+    def run_experiment_binaryIV(df, entr, query, method="cf"):
         """
         Run the EntropyBounds experiment.
         Parameters:
@@ -25,8 +25,90 @@ class EntropyBounds:
         X = df['X'].values
         Y = df['Y'].values
 
-        # Compute ATE bounds
-        return EntropyBounds._compute_ate_bounds(X, Y, entr, method)
+        if query == "ATE":
+            # Compute ATE bounds
+            return EntropyBounds._compute_ate_bounds(X, Y, entr, method)
+        elif query == "PNS":
+            # Compute PNS bounds
+            return EntropyBounds._compute_pns_bounds(X, Y, entr)
+        else:
+            raise ValueError(f"Unknown query '{query}'. Choose 'ATE' or 'PNS'.")
+
+    @staticmethod
+    def _compute_pns_bounds(X, Y, entr):
+        """
+        Bounds on PNS = P(Y1=1, Y0=0) under an entropy-(mutual-information) cap.
+
+        Parameters
+        ----------
+        X : 1-d array of 0/1 treatment assignments
+        Y : 1-d array of 0/1 outcomes (same length as X)
+        entr : float
+            Upper bound on I((Y1,Y0);X)  (≤ entropy of latent confounder).
+
+        Returns
+        -------
+        (lb, ub) : tuple of floats, the sharp lower and upper bounds on PNS.
+        """
+        # ---------- 1.  empirical quantities (constants) ----------
+        p_x1 = float(np.mean(X))
+        p_x0 = 1.0 - p_x1
+
+        #  P(Y=1 | X)
+        p_y1_x1 = float(np.mean(Y[X == 1])) if np.any(X == 1) else 0.0
+        p_y1_x0 = float(np.mean(Y[X == 0])) if np.any(X == 0) else 0.0
+
+        # ---------- 2.  decision variable : joint P(Y1,Y0,X) ----------
+        # state order (row-major, X fastest):
+        # (y1,y0,x) = (0,0,0) … (0,0,1) … (1,1,1)  ⇒  8 states
+        q = cp.Variable(8)
+
+        # ---------- 3.  basic probability constraints ----------
+        constraints = [
+            cp.sum(q) == 1,
+            q >= 0
+        ]
+
+        # ---------- 4.  match the observable distribution P(Y=1 ,  X) ----------
+        #   Y=1 with X=1  ⇔  Y1=1 ,  x=1   → indices 5 and 7
+        constraints.append(q[5] + q[7] == p_y1_x1 * p_x1)
+
+        #   Y=1 with X=0  ⇔  Y0=1 ,  x=0   → indices 2 and 6
+        constraints.append(q[2] + q[6] == p_y1_x0 * p_x0)
+
+        # ---------- 5.  mutual-information (entropy) constraint ----------
+        #
+        # selector S :  P(Y1,Y0) = S @ q    (4×8  constant)
+        S = np.zeros((4, 8))
+        S[0, [0, 1]] = 1          # (0,0)
+        S[1, [2, 3]] = 1          # (0,1)
+        S[2, [4, 5]] = 1          # (1,0)
+        S[3, [6, 7]] = 1          # (1,1)
+        p_y1y0 = S @ q            # length-4 affine expression
+
+        # replicator T :  product dist  r  =  T @ p_y1y0   (8×4  constant)
+        T = np.zeros((8, 4))
+        for k in range(4):
+            T[2 * k,     k] = p_x0      # x = 0
+            T[2 * k + 1, k] = p_x1      # x = 1
+        r = T @ p_y1y0                  # length-8 affine expression
+
+        # KL-divergence  (I((Y1,Y0);X) in bits)
+        kl_bits = cp.sum(cp.kl_div(q, r)) / math.log(2)
+        constraints.append(kl_bits <= entr)
+
+        # ---------- 6.  objective :  PNS = P(Y1=1 , Y0=0) ----------
+        # indices with (y1=1, y0=0):  x=0 → 4 ,  x=1 → 5
+        pns = q[4] + q[5]
+
+        # ---------- 7.  optimise ----------
+        lb_prob = cp.Problem(cp.Minimize(pns), constraints)
+        ub_prob = cp.Problem(cp.Maximize(pns), constraints)
+        lb_prob.solve(solver=cp.SCS)
+        ub_prob.solve(solver=cp.SCS)
+
+        return lb_prob.value, ub_prob.value
+
 
 
     @staticmethod

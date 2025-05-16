@@ -1,3 +1,4 @@
+from simulation_engine.util.alg_util import AlgUtil
 from .base_iv import IVScenario
 from simulation_engine.util.datagen_util import datagen_util
 from simulation_engine.algorithms.causaloptim import Causaloptim
@@ -42,9 +43,12 @@ class BinaryIV(IVScenario):
                         unob="U",
                         ),
                         
-        "entropybounds_0.8": lambda self: self.bound_ate_entropy(entr=0.80),
-        "entropybounds_0.2": lambda self: self.bound_ate_entropy(entr=0.20),
-        "entropybounds_0.1": lambda self: self.bound_ate_entropy(entr=0.10),
+        "ATE_entropybounds_0.80": lambda self: self.bound_entropy(entr=0.80, query='ATE'),
+        "ATE_entropybounds_0.20": lambda self: self.bound_entropy(entr=0.20, query='ATE'),
+        "ATE_entropybounds_0.10": lambda self: self.bound_entropy(entr=0.10, query='ATE'),
+        "PNS_entropybounds_0.80": lambda self: self.bound_entropy(entr=0.80, query='PNS'),
+        "PNS_entropybounds_0.20": lambda self: self.bound_entropy(entr=0.20, query='PNS'),
+        "PNS_entropybounds_0.10": lambda self: self.bound_entropy(entr=0.10, query='PNS'),
 
         "ATE_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "ATE"),
         "PNS_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "PNS"),
@@ -159,17 +163,21 @@ class BinaryIV(IVScenario):
 
 
 
-    def bound_ate_entropy(self, method="cf", entr=0.5, randomize_theta=False):
+    def bound_entropy(self, entr=0.5, query='ATE', method="cf",  randomize_theta=False):
         """
         Compute entropy bounds for the ATE using the given method and entropy constraint.
 
         Args:
             method (str): Method to use for computing bounds. Options are 'cf' or 'cp'. Default is 'cf'.
             entr (float): Upper bound on confounder entropy. Default is 0.5.
+            query (str): The query type (e.g., 'ATE' or 'PNS') to compute bounds for.
 
         Returns:
             Void: This method modifies the self.data DataFrame in place.
         """
+        assert method in {'cf', 'cp'}, "Method must be either 'cf' or 'cp'"
+        assert query in {'ATE', 'PNS'}, "Query must be either 'ATE' or 'PNS'"
+
         for idx, sim in self.data.iterrows():
             if randomize_theta:
                 # Randomize theta
@@ -179,27 +187,29 @@ class BinaryIV(IVScenario):
 
             df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
             failed = False
-            try:
-                ate_lower, ate_upper = EntropyBounds.run_experiment_binaryIV_ATE(df, entr=theta, method=method)
-                # Flatten bounds to [2, 2]
-                if ate_upper > 1: 
-                    ate_upper = 1
-                if ate_lower < -1: 
-                    ate_lower = -1
-            except Exception as e:
-                ate_lower = -1
-                ate_upper = 1
-                failed = True
+            
+            # try:
+            bound_lower, bound_upper = EntropyBounds.run_experiment_binaryIV(df, theta, query, method)
+                
+            # except Exception as e:
+            #     failed = True
+            
+            #Flatten bounds to trivial ceils
+            if failed | (bound_upper > AlgUtil.get_trivial_Ceils(query)[1]):
+                bound_upper = AlgUtil.get_trivial_Ceils(query)[1] 
+            if failed | (bound_lower < AlgUtil.get_trivial_Ceils(query)[0]): 
+                bound_lower = AlgUtil.get_trivial_Ceils(query)[0]
 
-            bounds_valid = ate_lower <= sim['ATE_true'] <= ate_upper
-            bounds_width = ate_upper - ate_lower
 
-            theta_rounded = round(theta, 2)
-            self.data.at[idx, 'entropybounds_'+str(theta_rounded)+'_bound_lower'] = ate_lower
-            self.data.at[idx, 'entropybounds_'+str(theta_rounded)+'_bound_upper'] = ate_upper
-            self.data.at[idx, 'entropybounds_'+str(theta_rounded)+'_bound_valid'] = bounds_valid
-            self.data.at[idx, 'entropybounds_'+str(theta_rounded)+'_bound_width'] = bounds_width
-            self.data.at[idx, 'entropybounds_'+str(theta_rounded)+'_bound_failed'] = failed
+            bounds_valid = bound_lower <= sim[query+'_true'] <= bound_upper
+            bounds_width = bound_upper - bound_lower
+
+            theta_rounded = f"{theta:.2f}"  # Always show two decimal places, e.g., 0.50
+            self.data.at[idx, f"{query}_entropybounds_{theta_rounded}_bound_lower"] = bound_lower
+            self.data.at[idx, f"{query}_entropybounds_{theta_rounded}_bound_upper"] = bound_upper
+            self.data.at[idx, f"{query}_entropybounds_{theta_rounded}_bound_valid"] = bounds_valid
+            self.data.at[idx, f"{query}_entropybounds_{theta_rounded}_bound_width"] = bounds_width
+            self.data.at[idx, f"{query}_entropybounds_{theta_rounded}_bound_failed"] = failed
 
 
 
