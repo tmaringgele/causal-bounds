@@ -27,7 +27,7 @@ def main(N_simulations, R_path):
     os.environ['R_HOME'] = R_path
     from simulation_engine.scenarios.iv.binary_iv import BinaryIV
     #install the R causaloptim package
-    install_causaloptim()
+    # install_causaloptim()
 
     print(f"Running simulation with N_simulations = {N_simulations}", flush=True)    
     
