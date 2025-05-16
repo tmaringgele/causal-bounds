@@ -7,13 +7,26 @@ import os
 #disable warnings
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
+import rpy2.robjects.packages as rpackages
+import rpy2.robjects.vectors as rvectors
+import rpy2.robjects as robjects
+
+def install_causaloptim():
+    # Ensure utils is available
+    utils = rpackages.importr('utils')
+
+    # Set a CRAN mirror
+    utils.chooseCRANmirror(ind=1)  # index 1 = cloud.r-project.org
+
+    # Install causaloptim
+    utils.install_packages(rvectors.StrVector(['causaloptim']))
 
 
 def main(N_simulations, R_path):
     print(f"Setting R path to {R_path}", flush=True)
     os.environ['R_HOME'] = R_path
     from simulation_engine.scenarios.iv.binary_iv import BinaryIV
-
+    #install the R causaloptim package
 
     print(f"Running simulation with N_simulations = {N_simulations}", flush=True)    
     
