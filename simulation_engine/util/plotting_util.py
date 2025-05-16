@@ -11,18 +11,25 @@ class PlottingUtil:
     """
 
     @staticmethod
-    def print_bound_statistics(dataframe, algorithms=['autobound', 'causaloptim']):
+    def print_bound_statistics(dataframe, algorithms=['autobound', 'causaloptim'], query=None):
         """
         Print statistics of the bounds for the given algorithms.
 
         Parameters:
         dataframe (pd.DataFrame): The input dataframe containing bound information.
         algorithms (list): List of algorithm names to print statistics for.
+        query (str, optional): If set, only algorithms starting with this string are printed.
 
         Returns:
         None
         """
-        for algorithm in algorithms:
+        # Filter algorithms if query is set
+        if query is not None:
+            filtered_algorithms = [alg for alg in algorithms if alg.startswith(query)]
+        else:
+            filtered_algorithms = algorithms
+
+        for algorithm in filtered_algorithms:
             if f'{algorithm}_bound_valid' in dataframe.columns:
                 failed_bounds = dataframe[dataframe[f'{algorithm}_bound_failed']].shape[0]
                 without_failed = dataframe[dataframe[f'{algorithm}_bound_failed'] == False]

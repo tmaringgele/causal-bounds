@@ -5,6 +5,7 @@ import os
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 import pandas as pd
+from simulation_engine.util.alg_util import AlgUtil
 
 class ZaffalonBounds:
 
@@ -27,27 +28,28 @@ class ZaffalonBounds:
     @staticmethod
     def _run_zaffalon_from_row_dict(row_dict, query):
 
-        # try:
-        df = pd.DataFrame({'Y': row_dict['Y'], 'X': row_dict['X'], 'Z': row_dict['Z']})
-        ate_lower, ate_upper = ZaffalonBounds.run_experiment_binaryIV(query, df)
+        try:
+            df = pd.DataFrame({'Y': row_dict['Y'], 'X': row_dict['X'], 'Z': row_dict['Z']})
+            bound_lower, bound_upper = ZaffalonBounds.run_experiment_binaryIV(query, df)
 
-        ate_lower = max(ate_lower, -1)
-        ate_upper = min(ate_upper, 1)
+            failed = False
 
+        except Exception as e:
+            print(f"Error in Zaffalon: {e}")
+            failed = True
 
-        failed = False
+        #Flatten bounds to trivial ceils
+        if failed | (bound_upper > AlgUtil.get_trivial_Ceils(query)[1]):
+            bound_upper = AlgUtil.get_trivial_Ceils(query)[1] 
+        if failed | (bound_lower < AlgUtil.get_trivial_Ceils(query)[0]): 
+            bound_lower = AlgUtil.get_trivial_Ceils(query)[0]
 
-        # except Exception as e:
-            # print(f"Error in Zaffalon: {e}")
-            # ate_lower, ate_upper = -1, 1
-            # failed = True
-        print('Zaffalon bounds:', ate_lower, ate_upper)
-        bounds_valid = ate_lower <= row_dict[query+'_true'] <= ate_upper
-        bounds_width = ate_upper - ate_lower
+        bounds_valid = bound_lower <= row_dict[query+'_true'] <= bound_upper
+        bounds_width = bound_upper - bound_lower
 
         return {
-            query+'_zaffalonbounds_bound_lower': ate_lower,
-            query+'_zaffalonbounds_bound_upper': ate_upper,
+            query+'_zaffalonbounds_bound_lower': bound_lower,
+            query+'_zaffalonbounds_bound_upper': bound_upper,
             query+'_zaffalonbounds_bound_valid': bounds_valid,
             query+'_zaffalonbounds_bound_width': bounds_width,
             query+'_zaffalonbounds_bound_failed': failed
@@ -82,14 +84,10 @@ class ZaffalonBounds:
         print (f"Result from Zaffalon: {result}")
         # result looks like this: '-0.5813,-0.2671'
         # Convert to tuple of floats
-        # try:
         result_str = str(result)  # Convert java.lang.String to Python str
         lower, upper = map(float, result_str.strip().split(","))
         return (lower, upper)
-        # except Exception as e:
-            # print(f"Error parsing result: {result}")
-            # raise ValueError(f"Failed to parse result '{result}': {e}")
-        return (lower, upper)
+
 
     @staticmethod
     def _dataframe_to_csv_string(df):

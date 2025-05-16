@@ -15,7 +15,9 @@ from datetime import datetime
 
 class BinaryIV(IVScenario):
     AVAILABLE_ALGORITHMS = {
-        "2SLS": lambda self: self.bound_ate_2SLS(),
+        "ATE_2SLS_0.99": lambda self: self.bound_ate_2SLS(0.99),
+        "ATE_2SLS_0.98": lambda self: self.bound_ate_2SLS(0.98),
+
         "ATE_causaloptim": lambda self: Causaloptim.bound("ATE", self.data, 
                        graph_str="(Z -+ X, X -+ Y, Ur -+ X, Ur -+ Y)", 
                        leftside=[1, 0, 0, 0], 
@@ -30,6 +32,7 @@ class BinaryIV(IVScenario):
                        nvals=[2, 2, 2, 2], 
                        rlconnect=[0, 0, 0, 0], 
                        monotone=[0, 0, 0, 0]),
+
         "ATE_autobound": lambda self: AutoBound.bound_binaryIV("ATE", self.data, 
                         dagstring="Z -> X, X -> Y, U -> X, U -> Y",
                         unob="U",
@@ -38,13 +41,17 @@ class BinaryIV(IVScenario):
                         dagstring="Z -> X, X -> Y, U -> X, U -> Y",
                         unob="U",
                         ),
+                        
         "entropybounds_0.8": lambda self: self.bound_ate_entropy(entr=0.80),
         "entropybounds_0.2": lambda self: self.bound_ate_entropy(entr=0.20),
         "entropybounds_0.1": lambda self: self.bound_ate_entropy(entr=0.10),
+
         "ATE_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "ATE"),
         "PNS_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "PNS"),
 
-        "manski": lambda self: self.bound_ate_manski(),
+        "ATE_manski": lambda self: self.bound_manski('ATE'),
+        "PNS_manski": lambda self: self.bound_manski('PNS'),
+
     }
 
     def __init__(self, dag, dataframe):
@@ -91,89 +98,65 @@ class BinaryIV(IVScenario):
         return {"runtimes": runtimes, "timestamp": current_timestamp}
 
 
-    def bound_ate_manski(self):
+    def bound_manski(self, query):
         """
-        Compute Manski bounds for the ATE using only observed treatment (X) and outcome (Y),
-        with no assumptions on confounding or instruments.
+        Compute Manski-style bounds for a given query using only observed treatment (X) and outcome (Y).
+        
+        Supported queries:
+            - 'ATE' : Average Treatment Effect
+            - 'PNS' : Probability of Necessity and Sufficiency
+
+        Args:
+            query (str): One of 'ATE' or 'PNS'
 
         Returns:
-            Void: This method modifies the self.data DataFrame in place.
+            Void: Modifies self.data DataFrame in place by adding bound columns.
         """
+        assert query in {'ATE', 'PNS'}, "Query must be either 'ATE' or 'PNS'"
+
         for idx, sim in self.data.iterrows():
             X = np.array(sim['X'])
             Y = np.array(sim['Y'])
             failed = False
 
             try:
-                # Estimate P(Y=1 | T=1) and P(Y=1 | T=0)
                 p1 = np.mean(Y[X == 1]) if np.any(X == 1) else 0.0
                 p0 = np.mean(Y[X == 0]) if np.any(X == 0) else 0.0
 
-                # Slack term
-                slack = 1 - p1 - p0
+                if query == 'ATE':
+                    slack = 1 - p1 - p0
+                    lower = p1 - p0 - slack
+                    upper = p1 - p0 + slack
+                    lower = max(lower, -1)
+                    upper = min(upper, 1)
 
-                # Correct Manski bounds
-                lower = p1 - p0 - slack
-                upper = p1 - p0 + slack
-
-                # Clip bounds to [-1, 1]
-                lower = max(lower, -1)
-                upper = min(upper, 1)
+                elif query == 'PNS':
+                    lower = max(0, p1 - p0)
+                    upper = min(p1, 1 - p0)
 
                 # Ensure logical ordering
                 lower, upper = min(lower, upper), max(lower, upper)
 
             except Exception:
-                lower = -1
+                lower = 0 if query == 'PNS' else -1
                 upper = 1
                 failed = True
 
-            bounds_valid = lower <= sim['ATE_true'] <= upper
+            # Validity check only makes sense for ATE (if ATE_true is in the data)
+            if query == 'ATE':
+                bounds_valid = lower <= sim['ATE_true'] <= upper
+            else:
+                bounds_valid = lower <= sim['PNS_true'] <= upper
+
             bounds_width = upper - lower
 
-            self.data.at[idx, 'manski_bound_lower'] = lower
-            self.data.at[idx, 'manski_bound_upper'] = upper
-            self.data.at[idx, 'manski_bound_valid'] = bounds_valid
-            self.data.at[idx, 'manski_bound_width'] = bounds_width
-            self.data.at[idx, 'manski_bound_failed'] = failed
+            self.data.at[idx, f'{query}_manski_bound_lower'] = lower
+            self.data.at[idx, f'{query}_manski_bound_upper'] = upper
+            self.data.at[idx, f'{query}_manski_bound_width'] = bounds_width
+            self.data.at[idx, f'{query}_manski_bound_failed'] = failed
+            self.data.at[idx, f'{query}_manski_bound_valid'] = bounds_valid
 
 
-
-    def bound_ate_zaffalon(self):
-        """
-        Compute entropy bounds for the ATE using the given method and entropy constraint.
-
-        Args:
-            method (str): Method to use for computing bounds. Options are 'cf' or 'cp'. Default is 'cf'.
-            entr (float): Upper bound on confounder entropy. Default is 0.5.
-
-        Returns:
-            Void: This method modifies the self.data DataFrame in place.
-        """
-        for idx, sim in self.data.iterrows():
-
-            df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
-            failed = False
-            try:
-                ate_lower, ate_upper = ZaffalonBounds.run_experiment_binaryIV_ATE(df)
-                # Flatten bounds to [2, 2]
-                if ate_upper > 1: 
-                    ate_upper = 1
-                if ate_lower < -1: 
-                    ate_lower = -1
-            except Exception as e:
-                ate_lower = -1
-                ate_upper = 1
-                failed = True
-
-            bounds_valid = ate_lower <= sim['ATE_true'] <= ate_upper
-            bounds_width = ate_upper - ate_lower
-
-            self.data.at[idx, 'zaffalonbounds_bound_lower'] = ate_lower
-            self.data.at[idx, 'zaffalonbounds_bound_upper'] = ate_upper
-            self.data.at[idx, 'zaffalonbounds_bound_valid'] = bounds_valid
-            self.data.at[idx, 'zaffalonbounds_bound_width'] = bounds_width
-            self.data.at[idx, 'zaffalonbounds_bound_failed'] = failed
 
 
     def bound_ate_entropy(self, method="cf", entr=0.5, randomize_theta=False):
@@ -262,11 +245,12 @@ class BinaryIV(IVScenario):
             CI_valid = CI_lower <= sim['ATE_true'] <= CI_upper
             CI_width = CI_upper - CI_lower
 
-            self.data.at[idx, '2SLS_bound_lower'] = CI_lower
-            self.data.at[idx, '2SLS_bound_upper'] = CI_upper
-            self.data.at[idx, '2SLS_bound_valid'] = CI_valid
-            self.data.at[idx, '2SLS_bound_width'] = CI_width
-            self.data.at[idx, '2SLS_bound_failed'] = failed
+            ci_level_str = f"{ci_level:.2f}"
+            self.data.at[idx, 'ATE_2SLS_' + ci_level_str + '_bound_lower'] = CI_lower
+            self.data.at[idx, 'ATE_2SLS_' + ci_level_str + '_bound_upper'] = CI_upper
+            self.data.at[idx, 'ATE_2SLS_' + ci_level_str + '_bound_valid'] = CI_valid
+            self.data.at[idx, 'ATE_2SLS_' + ci_level_str + '_bound_width'] = CI_width
+            self.data.at[idx, 'ATE_2SLS_' + ci_level_str + '_bound_failed'] = failed
     
 
     @staticmethod
