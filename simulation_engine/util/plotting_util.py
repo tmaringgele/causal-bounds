@@ -45,6 +45,54 @@ class PlottingUtil:
                 print(f"Algorithm: {algorithm} not found in dataframe columns.")
 
     @staticmethod
+    def print_bound_statistics_table(dataframe, algorithms=['autobound', 'causaloptim'], query=None):
+        """
+        Print statistics of the bounds for the given algorithms in a table format.
+
+        Parameters:
+        dataframe (pd.DataFrame): The input dataframe containing bound information.
+        algorithms (list): List of algorithm names to print statistics for.
+        query (str, optional): If set, only algorithms starting with this string are printed.
+
+        Returns:
+        None
+        """
+        # Filter algorithms if query is set
+        if query is not None:
+            filtered_algorithms = [alg for alg in algorithms if alg.startswith(query)]
+        else:
+            filtered_algorithms = algorithms
+
+        stats = []
+        for algorithm in filtered_algorithms:
+            if f'{algorithm}_bound_valid' in dataframe.columns:
+                failed_bounds = dataframe[dataframe[f'{algorithm}_bound_failed']].shape[0]
+                without_failed = dataframe[dataframe[f'{algorithm}_bound_failed'] == False]
+                invalid_bounds = without_failed[without_failed[f'{algorithm}_bound_valid'] == False].shape[0]
+                without_failed_and_invalid = without_failed[without_failed[f'{algorithm}_bound_valid'] == True]
+                fail_rate = failed_bounds / len(dataframe) * 100
+                invalid_rate = invalid_bounds / (len(dataframe) - failed_bounds) * 100 if (len(dataframe) - failed_bounds) > 0 else np.nan
+                net_bound_width = without_failed_and_invalid[f'{algorithm}_bound_width'].mean()
+                stats.append({
+                    'Algorithm': algorithm,
+                    'Fail Rate (%)': f"{fail_rate:.2f}",
+                    'Invalid Rate (%)': f"{invalid_rate:.2f}",
+                    'Net Bound Width': f"{net_bound_width:.4f}" if net_bound_width is not None else "N/A"
+                })
+            else:
+                stats.append({
+                    'Algorithm': algorithm,
+                    'Fail Rate (%)': "N/A",
+                    'Invalid Rate (%)': "N/A",
+                    'Net Bound Width': "N/A"
+                })
+        stats_df = pd.DataFrame(stats)
+        # Sort by Net Bound Width (convert to float, "N/A" as NaN)
+        stats_df['Net Bound Width Sort'] = pd.to_numeric(stats_df['Net Bound Width'], errors='coerce')
+        stats_df = stats_df.sort_values(by='Net Bound Width Sort', ascending=True).drop(columns=['Net Bound Width Sort'])
+        print(stats_df.to_string(index=False))
+
+    @staticmethod
     def plot_smoothed_query_vs_bounds(dataframe, query, algorithms=['autobound'], window=1, zeroline=False):
         """
         Plot smoothed <query>_true and confidence intervals for multiple algorithms from the given dataframe.
