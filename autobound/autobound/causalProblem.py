@@ -334,6 +334,42 @@ class causalProblem:
                                             i))
         if optimize:
             simplify_first_nodes(self, self.dag, datam, cond)
+
+        def load_data_pandas(self, dataframe, cond = [ ], optimize = True):
+            """ It accepts a file 
+            file must be csv. Columns will be added if they match parameters...
+            Column prob must indicate probability.
+            For example,
+            >    X,Y,prob,
+            >    1,0,0.25,
+            >    0,1,0.25,
+            >    1,1,0.25,
+            >    0,0,0.25
+            Conditioned columns must be added as a list , for instance, cond = ['M','C']
+            -------------------------------------------------------------------
+            Method: 
+            1) For each row of data, data is parsed and added as a constraint to the problem.
+            2) If conditioned data is present, arrangement for that are prepared
+            Extra: 
+            This method also implements one simplifier (first nodes simplifier).
+            If data regarding first nodes is complete, then numeric values are added directly.
+            """
+            datam = dataframe.copy()
+            cond_data = datam[cond] if len(cond) > 0 else [ ]
+            columns = [ x for x in datam.columns if x in list(self.dag.V) ]  + ['prob']
+            datam = datam[columns]
+            column_rest = [x for x in columns if x!= 'prob']
+            grouped_data = datam.groupby(column_rest).sum()['prob'].reset_index()
+            for i, row in grouped_data.iterrows():
+                self.add_constraint(
+                        get_constraint_from_row(row[column_rest], 
+                                                row['prob'], 
+                                                self, 
+                                                cond_data, 
+                                                i))
+            if optimize:
+                simplify_first_nodes(self, self.dag, datam, cond)
+        
     
     def set_p_to_zero(self, parameter_list):
         """
