@@ -10,6 +10,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 import rpy2.robjects.packages as rpackages
 import rpy2.robjects.vectors as rvectors
 import rpy2.robjects as robjects
+from rpy2.robjects import r
 
 def install_causaloptim():
     # Ensure utils is available
@@ -28,6 +29,7 @@ def main(N_simulations, R_path):
     from simulation_engine.scenarios.iv.binary_iv import BinaryIV
     #install the R causaloptim package
     # install_causaloptim()
+    r('.libPaths(c("/usr/local/lib/R/site-library", .libPaths()))')
 
     print(f"Running simulation with N_simulations = {N_simulations}", flush=True)    
     
