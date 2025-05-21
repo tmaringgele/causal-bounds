@@ -93,7 +93,7 @@ class PlottingUtil:
         print(stats_df.to_string(index=False))
 
     @staticmethod
-    def compute_tightest_bounds(dataframe):
+    def compute_tightest_bound(dataframe):
         """
         Compute the tightest bounds for each query type (ATE and PNS).
         
@@ -126,6 +126,51 @@ class PlottingUtil:
                         valid_bounds[alg] = row[f'{query}_{alg}_bound_width']
                 
                 # If there are any bounds, find the one with minimum width
+                if valid_bounds:
+                    min_alg = min(valid_bounds, key=valid_bounds.get)
+                    df.at[idx, tightest_bound_col] = min_alg
+        
+        return df
+
+    @staticmethod
+    def compute_tightest_bound_valid(dataframe):
+        """
+        Compute the tightest valid bounds for each query type (ATE and PNS).
+        Only considers bounds where _bound_valid is true and _bound_failed is false.
+        
+        Parameters:
+        dataframe (pd.DataFrame): The input dataframe containing bound information for different algorithms.
+        
+        Returns:
+        pd.DataFrame: The same dataframe with two additional columns: 'PNS_tightest_valid_bound' and 'ATE_tightest_valid_bound'.
+        """
+        df = dataframe.copy()
+        
+        # Process each query type (ATE and PNS)
+        for query in ['ATE', 'PNS']:
+            # Get all columns containing bound_width for this query type
+            bound_width_cols = [col for col in df.columns if f'{query}_' in col and col.endswith('_bound_width')]
+            
+            # Extract algorithm names from the column names
+            algorithms = [col.replace(f'{query}_', '').replace('_bound_width', '') for col in bound_width_cols]
+            print(f"{query} algorithms: {algorithms}")
+            # Create a new column for the tightest valid bound
+            tightest_bound_col = f'{query}_tightest_bound_valid'
+            df[tightest_bound_col] = None
+            
+            # For each row, find the algorithm with the smallest valid bound width
+            for idx, row in df.iterrows():
+                valid_bounds = {}
+                for alg in algorithms:
+                    # Check if the bound is valid and not failed
+                    if (f'{query}_{alg}_bound_valid' in df.columns and 
+                        f'{query}_{alg}_bound_failed' in df.columns and
+                        row[f'{query}_{alg}_bound_valid'] == True and
+                        row[f'{query}_{alg}_bound_failed'] == False and
+                        not pd.isna(row[f'{query}_{alg}_bound_width'])):
+                        valid_bounds[alg] = row[f'{query}_{alg}_bound_width']
+                
+                # If there are valid bounds, find the one with minimum width
                 if valid_bounds:
                     min_alg = min(valid_bounds, key=valid_bounds.get)
                     df.at[idx, tightest_bound_col] = min_alg
