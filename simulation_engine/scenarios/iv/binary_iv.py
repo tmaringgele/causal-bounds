@@ -16,8 +16,8 @@ from datetime import datetime
 
 class BinaryIV(IVScenario):
     AVAILABLE_ALGORITHMS = {
-        "ATE_2SLS_0.99": lambda self: self.bound_ate_2SLS(0.99),
-        "ATE_2SLS_0.98": lambda self: self.bound_ate_2SLS(0.98),
+        "ATE_2SLS-0.99": lambda self: self.bound_ate_2SLS(0.99),
+        "ATE_2SLS-0.98": lambda self: self.bound_ate_2SLS(0.98),
 
         "ATE_causaloptim": lambda self: Causaloptim.bound("ATE", self.data, 
                        graph_str="(Z -+ X, X -+ Y, Ur -+ X, Ur -+ Y)", 
@@ -43,12 +43,12 @@ class BinaryIV(IVScenario):
                         unob="U",
                         ),
                         
-        "ATE_entropybounds_0.80": lambda self: EntropyBounds.bound(self.data, 0.80, 'ATE'),
-        "ATE_entropybounds_0.20": lambda self: EntropyBounds.bound(self.data, 0.20, 'ATE'),
-        "ATE_entropybounds_0.10": lambda self: EntropyBounds.bound(self.data, 0.10, 'ATE'),
-        "PNS_entropybounds_0.80": lambda self: EntropyBounds.bound(self.data, 0.80, 'PNS'),
-        "PNS_entropybounds_0.20": lambda self: EntropyBounds.bound(self.data, 0.20, 'PNS'),
-        "PNS_entropybounds_0.10": lambda self: EntropyBounds.bound(self.data, 0.10, 'PNS'),
+        "ATE_entropybounds-0.80": lambda self: EntropyBounds.bound(self.data, 0.80, 'ATE'),
+        "ATE_entropybounds-0.20": lambda self: EntropyBounds.bound(self.data, 0.20, 'ATE'),
+        "ATE_entropybounds-0.10": lambda self: EntropyBounds.bound(self.data, 0.10, 'ATE'),
+        "PNS_entropybounds-0.80": lambda self: EntropyBounds.bound(self.data, 0.80, 'PNS'),
+        "PNS_entropybounds-0.20": lambda self: EntropyBounds.bound(self.data, 0.20, 'PNS'),
+        "PNS_entropybounds-0.10": lambda self: EntropyBounds.bound(self.data, 0.10, 'PNS'),
 
         "ATE_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "ATE"),
         "PNS_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "PNS"),
@@ -274,11 +274,11 @@ class BinaryIV(IVScenario):
             CI_width = CI_upper - CI_lower
 
             ci_level_str = f"{ci_level:.2f}"
-            self.data.at[idx, 'ATE_2SLS_' + ci_level_str + '_bound_lower'] = CI_lower
-            self.data.at[idx, 'ATE_2SLS_' + ci_level_str + '_bound_upper'] = CI_upper
-            self.data.at[idx, 'ATE_2SLS_' + ci_level_str + '_bound_valid'] = CI_valid
-            self.data.at[idx, 'ATE_2SLS_' + ci_level_str + '_bound_width'] = CI_width
-            self.data.at[idx, 'ATE_2SLS_' + ci_level_str + '_bound_failed'] = failed
+            self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_lower'] = CI_lower
+            self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_upper'] = CI_upper
+            self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_valid'] = CI_valid
+            self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_width'] = CI_width
+            self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_failed'] = failed
     
 
     @staticmethod

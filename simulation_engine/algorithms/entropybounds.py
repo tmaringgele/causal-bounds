@@ -55,11 +55,11 @@ class EntropyBounds:
             bounds_width = bound_upper - bound_lower
 
             theta_rounded = f"{theta:.2f}"  # Always show two decimal places, e.g., 0.50
-            data.at[idx, f"{query}_entropybounds_{theta_rounded}_bound_lower"] = bound_lower
-            data.at[idx, f"{query}_entropybounds_{theta_rounded}_bound_upper"] = bound_upper
-            data.at[idx, f"{query}_entropybounds_{theta_rounded}_bound_valid"] = bounds_valid
-            data.at[idx, f"{query}_entropybounds_{theta_rounded}_bound_width"] = bounds_width
-            data.at[idx, f"{query}_entropybounds_{theta_rounded}_bound_failed"] = failed
+            data.at[idx, f"{query}_entropybounds-{theta_rounded}_bound_lower"] = bound_lower
+            data.at[idx, f"{query}_entropybounds-{theta_rounded}_bound_upper"] = bound_upper
+            data.at[idx, f"{query}_entropybounds-{theta_rounded}_bound_valid"] = bounds_valid
+            data.at[idx, f"{query}_entropybounds-{theta_rounded}_bound_width"] = bounds_width
+            data.at[idx, f"{query}_entropybounds-{theta_rounded}_bound_failed"] = failed
 
 
     @staticmethod

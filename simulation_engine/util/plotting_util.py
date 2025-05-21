@@ -93,6 +93,46 @@ class PlottingUtil:
         print(stats_df.to_string(index=False))
 
     @staticmethod
+    def compute_tightest_bounds(dataframe):
+        """
+        Compute the tightest bounds for each query type (ATE and PNS).
+        
+        Parameters:
+        dataframe (pd.DataFrame): The input dataframe containing bound information for different algorithms.
+        
+        Returns:
+        pd.DataFrame: The same dataframe with two additional columns: 'PNS_tightest_bound' and 'ATE_tightest_bound'.
+        """
+        df = dataframe.copy()
+        
+        # Process each query type (ATE and PNS)
+        for query in ['ATE', 'PNS']:
+            # Get all columns containing bound_width for this query type
+            bound_width_cols = [col for col in df.columns if f'{query}_' in col and col.endswith('_bound_width')]
+            
+            # Extract algorithm names from the column names
+            algorithms = [col.replace(f'{query}_', '').replace('_bound_width', '') for col in bound_width_cols]
+            
+            # Create a new column for the tightest bound
+            tightest_bound_col = f'{query}_tightest_bound'
+            df[tightest_bound_col] = None
+            
+            # For each row, find the algorithm with the smallest bound width
+            for idx, row in df.iterrows():
+                valid_bounds = {}
+                for alg in algorithms:
+                    # Only check if the value is not NaN (don't check failed or validity)
+                    if not pd.isna(row[f'{query}_{alg}_bound_width']):
+                        valid_bounds[alg] = row[f'{query}_{alg}_bound_width']
+                
+                # If there are any bounds, find the one with minimum width
+                if valid_bounds:
+                    min_alg = min(valid_bounds, key=valid_bounds.get)
+                    df.at[idx, tightest_bound_col] = min_alg
+        
+        return df
+
+    @staticmethod
     def plot_smoothed_query_vs_bounds(dataframe, query, algorithms=['autobound'], window=1, zeroline=False):
         """
         Plot smoothed <query>_true and confidence intervals for multiple algorithms from the given dataframe.
