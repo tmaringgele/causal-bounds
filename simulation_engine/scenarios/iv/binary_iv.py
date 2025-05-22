@@ -53,8 +53,8 @@ class BinaryIV(IVScenario):
         "ATE_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "ATE"),
         "PNS_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "PNS"),
 
-        "ATE_manski": lambda self: self.bound_manski('ATE'),
-        "PNS_manski": lambda self: self.bound_manski('PNS'),
+        "ATE_nonpara": lambda self: self.bound_nonpara('ATE'),
+        "PNS_nonpara": lambda self: self.bound_nonpara('PNS'),
 
     }
 
@@ -120,7 +120,7 @@ class BinaryIV(IVScenario):
         return {"runtimes": runtimes, "timestamp": current_timestamp}
 
 
-    def bound_manski(self, query):
+    def bound_nonpara(self, query):
         """
         Compute Manski-style bounds for a given query using only observed treatment (X) and outcome (Y).
         
@@ -172,11 +172,11 @@ class BinaryIV(IVScenario):
 
             bounds_width = upper - lower
 
-            self.data.at[idx, f'{query}_manski_bound_lower'] = lower
-            self.data.at[idx, f'{query}_manski_bound_upper'] = upper
-            self.data.at[idx, f'{query}_manski_bound_width'] = bounds_width
-            self.data.at[idx, f'{query}_manski_bound_failed'] = failed
-            self.data.at[idx, f'{query}_manski_bound_valid'] = bounds_valid
+            self.data.at[idx, f'{query}_nonpara_bound_lower'] = lower
+            self.data.at[idx, f'{query}_nonpara_bound_upper'] = upper
+            self.data.at[idx, f'{query}_nonpara_bound_width'] = bounds_width
+            self.data.at[idx, f'{query}_nonpara_bound_failed'] = failed
+            self.data.at[idx, f'{query}_nonpara_bound_valid'] = bounds_valid
 
 
 
