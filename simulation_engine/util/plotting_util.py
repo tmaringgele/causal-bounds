@@ -178,6 +178,71 @@ class PlottingUtil:
         return df
 
     @staticmethod
+    def plot_tightest_bounds_distribution(dataframe, valid_only=False, figsize=(12, 6)):
+        """
+        Plot the distribution of algorithms that provided the tightest bounds.
+        
+        Parameters:
+        dataframe (pd.DataFrame): The input dataframe containing tightest bound information.
+        valid_only (bool): If True, use only valid bounds (from `_tightest_bound_valid`), otherwise use all bounds.
+        figsize (tuple): Size of the figure (width, height).
+        
+        Returns:
+        None
+        """
+        fig, axes = plt.subplots(1, 2, figsize=figsize)
+        
+        # Select the appropriate column suffix based on valid_only parameter
+        column_suffix = "tightest_bound_valid" if valid_only else "tightest_bound"
+        
+        # Plot distribution for ATE and PNS
+        for i, query in enumerate(['ATE', 'PNS']):
+            col_name = f"{query}_{column_suffix}"
+            
+            if col_name not in dataframe.columns:
+                print(f"Column {col_name} not found in dataframe")
+                continue
+            
+            # Count occurrences of each algorithm
+            counts = dataframe[col_name].value_counts().sort_values(ascending=False)
+            
+            # Calculate percentages
+            total = counts.sum()
+            percentages = (counts / total * 100).round(1)
+            
+            # Create labels with percentages
+            labels = [f"{alg}\n({pct}%)" for alg, pct in zip(counts.index, percentages)]
+            
+            # Plot bar chart
+            ax = axes[i]
+            bars = ax.bar(counts.index, counts.values, color='skyblue', edgecolor='black')
+            
+            # Add percentage labels on top of bars
+            for bar, pct in zip(bars, percentages):
+                height = bar.get_height()
+                ax.text(bar.get_x() + bar.get_width()/2., height + 20,
+                        f'{pct}%', ha='center', va='bottom', fontsize=9)
+            
+            # Set title and labels
+            ax.set_title(f"{query} Tightest {'Valid ' if valid_only else ''}Bounds Distribution")
+            ax.set_ylabel('Count')
+            ax.set_xlabel('Algorithm')
+            
+            # Rotate x-axis labels if there are many algorithms
+            if len(counts) > 5:
+                ax.set_xticklabels(counts.index, rotation=45, ha='right')
+                
+            # Add grid lines for better readability
+            ax.grid(axis='y', linestyle='--', alpha=0.7)
+            
+            # Show counts on top of bars
+            for i, v in enumerate(counts.values):
+                ax.text(i, v + 0.5, str(v), ha='center')
+        
+        plt.tight_layout()
+        plt.show()
+
+    @staticmethod
     def plot_smoothed_query_vs_bounds(dataframe, query, algorithms=['autobound'], window=1, zeroline=False):
         """
         Plot smoothed <query>_true and confidence intervals for multiple algorithms from the given dataframe.

@@ -146,9 +146,8 @@ class BinaryIV(IVScenario):
                 p0 = np.mean(Y[X == 0]) if np.any(X == 0) else 0.0
 
                 if query == 'ATE':
-                    slack = 1 - p1 - p0
-                    lower = p1 - p0 - slack
-                    upper = p1 - p0 + slack
+                    lower = p1 - p0 - 1
+                    upper = p1 - p0 + 1
                     lower = max(lower, -1)
                     upper = min(upper, 1)
 
@@ -160,9 +159,10 @@ class BinaryIV(IVScenario):
                 lower, upper = min(lower, upper), max(lower, upper)
 
             except Exception:
-                lower = 0 if query == 'PNS' else -1
-                upper = 1
                 failed = True
+
+            # Flatten bounds to trivial ceils
+            AlgUtil.flatten_bounds_to_trivial_ceils(query, lower, upper, failed)
 
             # Validity check only makes sense for ATE (if ATE_true is in the data)
             if query == 'ATE':

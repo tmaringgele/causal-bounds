@@ -20,3 +20,12 @@ class AlgUtil:
             return 0, 1
         else:
             raise ValueError(f"Unknown query type: {query}")
+        
+    @staticmethod
+    def flatten_bounds_to_trivial_ceils(query, bound_lower, bound_upper, failed):
+        #Flatten bounds to trivial ceils
+        if failed | (bound_upper > AlgUtil.get_trivial_Ceils(query)[1]):
+            bound_upper = AlgUtil.get_trivial_Ceils(query)[1] 
+        if failed | (bound_lower < AlgUtil.get_trivial_Ceils(query)[0]): 
+            bound_lower = AlgUtil.get_trivial_Ceils(query)[0]
+        return bound_lower, bound_upper
