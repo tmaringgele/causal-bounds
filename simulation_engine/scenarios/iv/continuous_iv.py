@@ -24,6 +24,48 @@ class ContinuousIV(IVScenario):
             result = ContinuousIV.generate_data(n=n, seed=sim_seed, allowed_functions=allowed_functions)
             results.append(result)
         return pd.DataFrame(results)
+    
+    def run_rolling_b_X_Y_simulations(
+        b_range=(-5, 5),
+        N_points=50,
+        replications=20,
+        n=500,
+        seed=None,
+        allowed_functions=None
+    ):
+        """
+        Run simulations across a range of b_X_Y values with multiple replications per point,
+        returning a DataFrame with all individual simulation results (not aggregated).
+
+        Args:
+            b_range (tuple): Range (min, max) of b_X_Y values.
+            N_points (int): Number of evenly spaced b_X_Y values to try.
+            replications (int): Number of replications per b_X_Y value.
+            n (int): Sample size per simulation.
+            seed (int or None): Optional base seed.
+            allowed_functions (list of str or None): If specified, restricts function choices.
+
+        Returns:
+            pd.DataFrame: All simulation results with repeated b_X_Y values.
+        """
+        all_results = []
+        b_values = np.linspace(b_range[0], b_range[1], N_points)
+
+        for i, b_X_Y_val in enumerate(b_values):
+            for j in range(replications):
+                sim_seed = (seed + i * replications + j) if seed is not None else None
+                result = ContinuousIV.generate_data(
+                    n=n,
+                    seed=sim_seed,
+                    b_X_Y=b_X_Y_val,
+                    allowed_functions=allowed_functions
+                )
+                result['b_X_Y'] = b_X_Y_val
+                all_results.append(result)
+
+        return pd.DataFrame(all_results)
+
+
 
     @staticmethod
     def generate_data(
@@ -86,8 +128,8 @@ class ContinuousIV(IVScenario):
         epsilon_Y = np.random.normal(0, sigma_Y, n)
         Y = b_X_Y * g_X_Y(X) + b_U_Y * g_U_Y(U) + epsilon_Y
 
-        Y1 = b_X_Y * g_X_Y(X + 1) + b_U_Y * g_U_Y(U)
-        Y0 = b_X_Y * g_X_Y(X - 1) + b_U_Y * g_U_Y(U)
+        Y1 = b_X_Y * g_X_Y(X) + b_U_Y * g_U_Y(U)
+        Y0 = b_X_Y * g_X_Y(0) + b_U_Y * g_U_Y(U)
         ATE_true = np.mean(Y1 - Y0)
         PNS_true = np.mean((Y1 > Y0).astype(float))
 
