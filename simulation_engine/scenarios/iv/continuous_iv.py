@@ -16,6 +16,14 @@ class ContinuousIV(IVScenario):
         print("Binning continuous data with bin size:", self.bin_size, 'from:', dataframe_cont)
         return 'binned data'  
     
+    @staticmethod
+    def run_continuous_iv_simulations(N=2000, n=500, seed=None, allowed_functions=None):
+        results = []
+        for i in range(N):
+            sim_seed = seed + i if seed is not None else None
+            result = ContinuousIV.generate_data(n=n, seed=sim_seed, allowed_functions=allowed_functions)
+            results.append(result)
+        return pd.DataFrame(results)
 
     @staticmethod
     def generate_data(
