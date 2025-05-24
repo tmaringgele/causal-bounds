@@ -431,10 +431,10 @@ class BinaryIV(IVScenario):
             'U': U,
             'X': X,
             'Y': Y,
-            'entropy_Z': EntropyBounds.entropy_of_array(Z),
-            'entropy_U': EntropyBounds.entropy_of_array(U),
-            'entropy_X': EntropyBounds.entropy_of_array(X),
-            'entropy_Y': EntropyBounds.entropy_of_array(Y),
+            'entropy_Z': datagen_util.entropy_of_array(Z),
+            'entropy_U': datagen_util.entropy_of_array(U),
+            'entropy_X': datagen_util.entropy_of_array(X),
+            'entropy_Y': datagen_util.entropy_of_array(Y),
             'sigma_X': sigma_X,
             'sigma_Y': sigma_Y
         }
@@ -443,7 +443,7 @@ class BinaryIV(IVScenario):
     # Convert float arrays to int64 for entropy calculation
     def safe_entropy(arr):
         arr = np.asarray(arr).astype(np.int64)
-        return EntropyBounds.entropy_of_array(arr)
+        return datagen_util.entropy_of_array(arr)
 
     def generate_response_type_data(
         N_simulations=50,
@@ -526,33 +526,5 @@ class BinaryIV(IVScenario):
 
         return pd.DataFrame(results)
 
-
-    def sample_from_random_distribution(n, seed=None):
-        """
-        Returns an array of n samples from a randomly chosen distribution in D.
-        
-        Parameters:
-        - n: number of samples
-        - seed: random seed for reproducibility (optional)
-        
-        Returns:
-        - np.ndarray of shape (n,)
-        """
-        if seed is not None:
-            np.random.seed(seed)
-
-        # Define the distribution set D as callables
-        D = [
-            lambda n: np.random.normal(0, 1, n),                        # Standard Normal
-            lambda n: np.random.uniform(-2, 2, n),                      # Uniform
-            lambda n: np.random.laplace(loc=0, scale=1, size=n),       # Laplace
-            lambda n: np.random.beta(a=2, b=5, size=n),                # Beta (0,1) skewed right
-            lambda n: 0.7 * np.random.normal(0, 1, n) + 0.3 * np.random.normal(3, 1, n),  # Gaussian mixture (approximate)
-        ]
-
-        # Choose a distribution randomly
-        dist_fn = np.random.choice(D)
-        
-        return dist_fn(n)
 
 
