@@ -282,7 +282,7 @@ class BinaryIV(IVScenario):
     
 
     @staticmethod
-    def generate_data_rolling_ate(N_simulations=2000, n=500, seed=None, b_U_X=None, b_U_Y=None, b_Z=None, intercept_X=None, intercept_Y=None, p_U=None, p_Z=None):
+    def generate_data_rolling_ate(N_simulations=2000, n=500, seed=None, b_U_X=None, b_U_Y=None, b_Z_X=None, intercept_X=None, intercept_Y=None, p_U=None, p_Z=None, sigma_X=None, sigma_Y=None):
         """
         Generate data for a binary instrumental variable scenario.
 
@@ -292,11 +292,13 @@ class BinaryIV(IVScenario):
             seed (int, optional): Random seed for reproducibility. Default is None.
             b_U_X (float): Coefficient for the effect of unobserved confounder U on X. Default is drawn from N(0, 1).
             b_U_Y (float): Coefficient for the effect of unobserved confounder U on Y. Default is drawn from N(0, 1).
-            b_Z (float): Coefficient for the effect of instrument Z on X. Default is drawn from a bimodal distribution.
+            b_Z_X (float): Coefficient for the effect of instrument Z on X. Default is drawn from a bimodal distribution.
             intercept_X (float): Intercept for the logistic model of X. Default is 0.
             intercept_Y (float): Intercept for the logistic model of Y. Default is 0.
             p_U (float): Probability of unobserved confounder U ~ Bernoulli(p_U). Default is drawn from Uniform(0, 1).
             p_Z (float): Probability of instrument Z ~ Bernoulli(p_Z). Default is drawn from Uniform(0, 1).
+            sigma_X (float or None): Std. dev. of noise added to the X logit. If None, sampled from |N(0,1)|. If 0, no noise.
+            sigma_Y (float or None): Std. dev. of noise added to the Y logit. Same behavior as sigma_X.
 
         Returns:
             dict: A dictionary containing the generated data and parameters.
@@ -313,74 +315,63 @@ class BinaryIV(IVScenario):
                 seed=seed,
                 b_U_X=b_U_X,
                 b_U_Y=b_U_Y,
-                b_Z=b_Z,
+                b_Z_X=b_Z_X,
                 b_X_Y=b_X_Y,
                 intercept_X=intercept_X,
                 intercept_Y=intercept_Y,
                 p_U=p_U,
-                p_Z=p_Z
+                p_Z=p_Z,
+                sigma_X=sigma_X,
+                sigma_Y=sigma_Y
             )
             df_results.append(result)
         return pd.DataFrame(df_results)
 
     def _simulate_deterministic_data(
         n=500,
-        seed= None,
+        seed=None,
         b_U_X=None,
         b_U_Y=None,
-        b_Z=None,
+        b_Z_X=None,
         b_X_Y=None,
         intercept_X=None,
         intercept_Y=None,
-        p_U = None,
-        p_Z = None
+        p_U=None,
+        p_Z=None,
+        sigma_X=None,
+        sigma_Y=None
     ):
         """
-        Simulate deterministic (binary) data for causal analysis.
+        Simulate binary data for causal analysis using a logistic SCM with optional additive noise.
 
         Args:
             n (int): Number of samples to generate. Default is 500.
             seed (int, optional): Random seed for reproducibility. Default is None.
-            b_U_X (float): Coefficient for the effect of unobserved confounder U on X. Default is drawn from N(0, 1).
-            b_U_Y (float): Coefficient for the effect of unobserved confounder U on Y. Default is drawn from N(0, 1).
-            b_Z (float): Coefficient for the effect of instrument Z on X. Default is drawn from a bimodal distribution.
-            b_X_Y (float): Coefficient for the effect of treatment X on Y. Default is drawn from a bimodal distribution.
+            b_U_X (float): Coefficient for the effect of U on X. Default is drawn from N(0, 1).
+            b_U_Y (float): Coefficient for the effect of U on Y. Default is drawn from N(0, 1).
+            b_Z_X (float): Coefficient for the effect of Z on X. Default is drawn from a bimodal distribution.
+            b_X_Y (float): Coefficient for the effect of X on Y. Default is drawn from a bimodal distribution.
             intercept_X (float): Intercept for the logistic model of X. Default is 0.
             intercept_Y (float): Intercept for the logistic model of Y. Default is 0.
-            p_U (float): Probability of unobserved confounder U ~ Bernoulli(p_U). Default is drawn from Uniform(0, 1).
-            p_Z (float): Probability of instrument Z ~ Bernoulli(p_Z). Default is drawn from Uniform(0, 1).
+            p_U (float): Probability for U ~ Bernoulli(p_U). Default is drawn from Uniform(0, 1).
+            p_Z (float): Probability for Z ~ Bernoulli(p_Z). Default is drawn from Uniform(0, 1).
+            sigma_X (float or None): Std. dev. of noise added to the X logit. If None, sampled from |N(0,1)|. If 0, no noise.
+            sigma_Y (float or None): Std. dev. of noise added to the Y logit. Same behavior as sigma_X.
 
         Returns:
-            dict: A dictionary containing:
-                - seed (int): The random seed used.
-                - intercept_X (float): Intercept for X.
-                - intercept_Y (float): Intercept for Y.
-                - b_Z (float): Coefficient for Z.
-                - b_U_X (float): Coefficient for U on X.
-                - b_X_Y (float): Coefficient for X on Y.
-                - b_U_Y (float): Coefficient for U on Y.
-                - ATE_true (float): True Average Treatment Effect of X on Y.
-                - PNS_true (float): True Probability of Necessity and Suffiency of X on Y.
-                - p_Y1 (np.ndarray): Probabilities of Y=1 under treatment.
-                - p_Y0 (np.ndarray): Probabilities of Y=1 under control.
-                - p_U (float): Probability of unobserved confounder U.
-                - p_Z (float): Probability of instrument Z.
-                - Z (np.ndarray): Instrument variable.
-                - U (np.ndarray): Unobserved confounder.
-                - X (np.ndarray): Treatment assignment.
-                - Y (np.ndarray): Outcome variable.
+            dict: Dictionary with all simulated data, model parameters, true ATE and PNS, and entropy values.
         """
         if seed is None:
             seed = np.random.randint(0, 1e6)
         np.random.seed(seed)
 
-        # Assign default values if parameters are None
+        # Coefficient defaults
         if b_U_X is None:
-            b_U_X = np.random.normal(0, 1, 1)[0]
+            b_U_X = np.random.normal(0, 1)
         if b_U_Y is None:
-            b_U_Y = np.random.normal(0, 1, 1)[0]
-        if b_Z is None:
-            b_Z = datagen_util.pick_from_bimodal()
+            b_U_Y = np.random.normal(0, 1)
+        if b_Z_X is None:
+            b_Z_X = datagen_util.pick_from_bimodal()
         if b_X_Y is None:
             b_X_Y = datagen_util.pick_from_bimodal()
         if intercept_X is None:
@@ -392,35 +383,41 @@ class BinaryIV(IVScenario):
         if p_Z is None:
             p_Z = np.random.uniform(0, 1)
 
-        # Binary variables
+        # Noise level logic
+        if sigma_X is None:
+            sigma_X = abs(np.random.normal(0, 1))
+        if sigma_Y is None:
+            sigma_Y = abs(np.random.normal(0, 1))
+
+        # Binary exogenous variables
         Z = np.random.binomial(1, p_Z, size=n)
         U = np.random.binomial(1, p_U, size=n)
 
-        # Treatment assignment
-        logit_X = intercept_X + b_Z * Z + b_U_X * U
+        # Add noise to treatment assignment
+        epsilon_X = np.random.normal(0, sigma_X, size=n) if sigma_X > 0 else 0
+        logit_X = intercept_X + b_Z_X * Z + b_U_X * U + epsilon_X
         p_X = 1 / (1 + np.exp(-logit_X))
         X = np.random.binomial(1, p_X)
 
-        # Deterministic outcome
-        logit_Y = intercept_Y + b_X_Y * X + b_U_Y * U
+        # Add noise to outcome assignment
+        epsilon_Y = np.random.normal(0, sigma_Y, size=n) if sigma_Y > 0 else 0
+        logit_Y = intercept_Y + b_X_Y * X + b_U_Y * U + epsilon_Y
         p_Y = 1 / (1 + np.exp(-logit_Y))
         Y = np.random.binomial(1, p_Y)
 
-        # Probabilistic potential outcomes
+        # Potential outcomes without noise
         logit_Y1 = intercept_Y + b_X_Y * 1 + b_U_Y * U
         logit_Y0 = intercept_Y + b_X_Y * 0 + b_U_Y * U
         p_Y1 = 1 / (1 + np.exp(-logit_Y1))
         p_Y0 = 1 / (1 + np.exp(-logit_Y0))
         ATE_true = np.mean(p_Y1 - p_Y0)
-        PNS_i = p_Y1 * (1 - p_Y0)
-        PNS_true = np.mean(PNS_i)
-
+        PNS_true = np.mean(p_Y1 * (1 - p_Y0))
 
         return {
             'seed': seed,
             'intercept_X': intercept_X,
             'intercept_Y': intercept_Y,
-            'b_Z': b_Z,
+            'b_Z_X': b_Z_X,
             'b_U_X': b_U_X,
             'b_X_Y': b_X_Y,
             'b_U_Y': b_U_Y,
@@ -437,9 +434,11 @@ class BinaryIV(IVScenario):
             'entropy_Z': EntropyBounds.entropy_of_array(Z),
             'entropy_U': EntropyBounds.entropy_of_array(U),
             'entropy_X': EntropyBounds.entropy_of_array(X),
-            'entropy_Y': EntropyBounds.entropy_of_array(Y)
-            
+            'entropy_Y': EntropyBounds.entropy_of_array(Y),
+            'sigma_X': sigma_X,
+            'sigma_Y': sigma_Y
         }
+
     
     # Convert float arrays to int64 for entropy calculation
     def safe_entropy(arr):
@@ -500,7 +499,7 @@ class BinaryIV(IVScenario):
                 'seed': seed,
                 'intercept_X': None,
                 'intercept_Y': None,
-                'b_Z': None,
+                'b_Z_X': None,
                 'b_U_X': None,
                 'b_X_Y': None,
                 'b_U_Y': None,
