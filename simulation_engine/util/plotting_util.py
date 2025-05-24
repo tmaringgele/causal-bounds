@@ -243,15 +243,17 @@ class PlottingUtil:
         plt.show()
 
     @staticmethod
-    def plot_smoothed_query_vs_bounds(dataframe, query, algorithms=['autobound'], window=1, zeroline=False):
+    def plot_smoothed_query_vs_bounds(dataframe, query, algorithms=['autobound'], window=1, zeroline=False, roll_over='b_X_Y'):
         """
         Plot smoothed <query>_true and confidence intervals for multiple algorithms from the given dataframe.
 
         Parameters:
-        dataframe (pd.DataFrame): The input dataframe containing columns '<query>_true', '<algorithm>_bound_lower', '<algorithm>_bound_upper', and 'b_X_Y'.
+        dataframe (pd.DataFrame): The input dataframe containing columns '<query>_true', '<algorithm>_bound_lower', '<algorithm>_bound_upper', and the roll_over variable.
         query (str): The query type (e.g., 'ATE' or 'PNS') to plot.
         algorithms (list): List of algorithm names to use for bounds (e.g., ['autobound', 'causaloptim']).
         window (int): The size of the rolling window for smoothing. Default is 30.
+        zeroline (bool): Whether to plot a horizontal zero line.
+        roll_over (str): The column name to use for the X axis. Default is 'b_X_Y'.
 
         Returns:
         None
@@ -259,9 +261,9 @@ class PlottingUtil:
         # Create a copy of the dataframe to avoid modifying the original
         df = dataframe.copy()
 
-        # Check if b_X_Y has varying values
-        if dataframe['b_X_Y'].nunique() <= 1:
-            print("Error: The 'b_X_Y' column has constant or invalid values. Cannot plot.")
+        # Check if roll_over column has varying values
+        if roll_over not in df.columns or df[roll_over].nunique() <= 1:
+            print(f"Error: The '{roll_over}' column has constant or invalid values. Cannot plot.")
             return
 
         # Smoothen the data using a rolling average
@@ -269,22 +271,22 @@ class PlottingUtil:
 
         # Plot the smoothed data
         plt.figure(figsize=(10, 6))
-        sns.lineplot(data=df, x='b_X_Y', y=f'{query}_true_smooth', label=f'${query}_{{true}}$', color='blue')
+        sns.lineplot(data=df, x=roll_over, y=f'{query}_true_smooth', label=f'${query}_{{true}}$', color='blue')
 
         alpha = 0.8
         for algorithm in algorithms:
             if f'{algorithm}_bound_lower' in df.columns and f'{algorithm}_bound_upper' in df.columns:
                 df[f'{algorithm}_bound_lower_smooth'] = df[f'{algorithm}_bound_lower'].rolling(window=window, center=True).mean()
                 df[f'{algorithm}_bound_upper_smooth'] = df[f'{algorithm}_bound_upper'].rolling(window=window, center=True).mean()
-                sns.lineplot(data=df, x='b_X_Y', y=f'{algorithm}_bound_lower_smooth', color=f'C{algorithms.index(algorithm)}', alpha=alpha)
-                sns.lineplot(data=df, x='b_X_Y', y=f'{algorithm}_bound_upper_smooth', color=f'C{algorithms.index(algorithm)}', label=f'{algorithm}', alpha=alpha)
+                sns.lineplot(data=df, x=roll_over, y=f'{algorithm}_bound_lower_smooth', color=f'C{algorithms.index(algorithm)}', alpha=alpha)
+                sns.lineplot(data=df, x=roll_over, y=f'{algorithm}_bound_upper_smooth', color=f'C{algorithms.index(algorithm)}', label=f'{algorithm}', alpha=alpha)
             else:
                 print(f"Warning: Columns for algorithm '{algorithm}' not found in dataframe.")
 
         if zeroline:
             plt.axhline(0, color='red', linestyle='--', label='Zero Line')
         plt.title(f'Algorithms vs ${query}_{{true}}$ (smoothed out)')
-        plt.xlabel('b_X_Y Coefficient')
+        plt.xlabel(roll_over)
         plt.ylabel(f'{query} Value')
         plt.legend()
         plt.grid(True)
