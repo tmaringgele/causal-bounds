@@ -349,3 +349,27 @@ class PlottingUtil:
         plt.grid(True)
         plt.legend()
         plt.show()
+    @staticmethod
+    def plot_ate_pns(df: pd.DataFrame, x_col: str = "b_X_Y", ate_col: str = "ATE_true", pns_col: str = "PNS_true", window: int = 1):
+        """
+        Plot ATE and PNS from a DataFrame of simulation results, with optional smoothing.
+
+        Args:
+            df (pd.DataFrame): DataFrame containing simulation results.
+            x_col (str): Column name representing the rolling parameter (e.g. b_X_Y).
+            ate_col (str): Column name for the true ATE values.
+            pns_col (str): Column name for the true PNS values.
+            window (int): Rolling window size for smoothing. Default is 1 (no smoothing).
+        """
+        ate_smooth = df[ate_col].rolling(window=window, center=True).mean()
+        pns_smooth = df[pns_col].rolling(window=window, center=True).mean()
+        plt.figure(figsize=(8, 5))
+        plt.plot(df[x_col], ate_smooth, label="ATE", linewidth=2)
+        plt.plot(df[x_col], pns_smooth, label="PNS", linewidth=2)
+        plt.xlabel(f"{x_col}")
+        plt.ylabel("Value")
+        plt.title("True ATE and PNS across simulations")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()

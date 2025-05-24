@@ -309,7 +309,7 @@ class BinaryIV(IVScenario):
         # in the range of -5 to 5
         step_size = (5 - (-5)) / N_simulations
 
-        for b_X_Y in np.arange(-5, 5, step_size):
+        for b_X_Y in np.linspace(-5, 5, N_simulations):
             result = BinaryIV._simulate_deterministic_data(
                 n=n,
                 seed=seed,
