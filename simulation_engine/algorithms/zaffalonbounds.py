@@ -6,6 +6,7 @@ from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 import pandas as pd
 from simulation_engine.util.alg_util import AlgUtil
+import multiprocessing
 
 class ZaffalonBounds:
 
@@ -13,6 +14,11 @@ class ZaffalonBounds:
     
     @staticmethod
     def bound_binaryIV(data, query, max_workers=None):
+
+        # if max_workers is None, use the number of available CPUs
+        if max_workers is None:
+            max_workers = multiprocessing.cpu_count()
+
 
         row_dicts = [row.to_dict() for _, row in data.iterrows()]
 
