@@ -16,6 +16,9 @@ class ContinuousIV(IVScenario):
         print("Binning continuous data with bin size:", self.bin_size, 'from:', dataframe_cont)
         return 'binned data'  
     
+
+
+    
     @staticmethod
     def run_continuous_iv_simulations(N=2000, n=500, seed=None, allowed_functions=None):
         results = []
@@ -24,7 +27,7 @@ class ContinuousIV(IVScenario):
             result = ContinuousIV.generate_data(n=n, seed=sim_seed, allowed_functions=allowed_functions)
             results.append(result)
         return pd.DataFrame(results)
-    
+    @staticmethod
     def run_rolling_b_X_Y_simulations(
         b_range=(-5, 5),
         N_points=50,
@@ -64,7 +67,6 @@ class ContinuousIV(IVScenario):
                 all_results.append(result)
 
         return pd.DataFrame(all_results)
-
 
 
     @staticmethod
@@ -153,4 +155,6 @@ class ContinuousIV(IVScenario):
             'U': U,
             'X': X,
             'Y': Y,
+            'Y_max': np.max(Y),
+            
         }
