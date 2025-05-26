@@ -1,11 +1,29 @@
 
 import numpy as np
+from scipy.stats import norm
 
 
 class datagen_util:
     """
     Utility class for generating data for simulation scenarios.
     """
+
+    @staticmethod
+    def get_squashers():
+        """
+        Returns a dictionary of squashing functions that map real-valued logits to probabilities in [0, 1].
+
+        Returns:
+            dict: A dictionary with function names as keys and callable functions as values.
+        """
+        squashers = {
+            "sigmoid": lambda x: 1 / (1 + np.exp(-x)),  # standard logistic
+            "tanh_scaled": lambda x: 0.5 * (1 + np.tanh(x)),  # scaled tanh to [0, 1]
+            "softplus": lambda x: np.log1p(np.exp(x)) / (1 + np.log1p(np.exp(x))),  # smooth capped softplus
+            "probit": lambda x: norm.cdf(x),  # Gaussian CDF
+        }
+        return squashers
+
     @staticmethod
     def entropy_of_array(arr):
         """

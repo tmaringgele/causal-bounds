@@ -365,6 +365,11 @@ class BinaryIV(IVScenario):
             seed = np.random.randint(0, 1e6)
         np.random.seed(seed)
 
+        # Randomly choose a squashing function
+        squashers = datagen_util.get_squashers()
+        squasher_name = np.random.choice(list(squashers.keys()))
+        squasher = squashers[squasher_name]
+
         # Coefficient defaults
         if b_U_X is None:
             b_U_X = np.random.normal(0, 1)
@@ -394,22 +399,22 @@ class BinaryIV(IVScenario):
         U = np.random.binomial(1, p_U, size=n)
 
         # Add noise to treatment assignment
-        epsilon_X = np.random.normal(0, sigma_X, size=n) if sigma_X > 0 else 0
+        epsilon_X = np.zeros(n) if sigma_X == 0 else np.random.normal(0, sigma_X, size=n)
         logit_X = intercept_X + b_Z_X * Z + b_U_X * U + epsilon_X
-        p_X = 1 / (1 + np.exp(-logit_X))
+        p_X = squasher(logit_X)
         X = np.random.binomial(1, p_X)
 
         # Add noise to outcome assignment
-        epsilon_Y = np.random.normal(0, sigma_Y, size=n) if sigma_Y > 0 else 0
+        epsilon_Y = np.zeros(n) if sigma_Y == 0 else np.random.normal(0, sigma_Y, size=n)
         logit_Y = intercept_Y + b_X_Y * X + b_U_Y * U + epsilon_Y
-        p_Y = 1 / (1 + np.exp(-logit_Y))
+        p_Y = squasher(logit_Y)
         Y = np.random.binomial(1, p_Y)
 
         # Potential outcomes without noise
         logit_Y1 = intercept_Y + b_X_Y * 1 + b_U_Y * U
         logit_Y0 = intercept_Y + b_X_Y * 0 + b_U_Y * U
-        p_Y1 = 1 / (1 + np.exp(-logit_Y1))
-        p_Y0 = 1 / (1 + np.exp(-logit_Y0))
+        p_Y1 = squasher(logit_Y1)
+        p_Y0 = squasher(logit_Y0)
         ATE_true = np.mean(p_Y1 - p_Y0)
         PNS_true = np.mean(p_Y1 * (1 - p_Y0))
 
@@ -436,7 +441,8 @@ class BinaryIV(IVScenario):
             'entropy_X': datagen_util.entropy_of_array(X),
             'entropy_Y': datagen_util.entropy_of_array(Y),
             'sigma_X': sigma_X,
-            'sigma_Y': sigma_Y
+            'sigma_Y': sigma_Y,
+            'squasher_name': squasher_name
         }
 
     
