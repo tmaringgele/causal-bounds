@@ -342,7 +342,8 @@ class BinaryIV(IVScenario):
         sigma_Y=None
     ):
         """
-        Simulate binary data for causal analysis using a logistic SCM with optional additive noise.
+        Simulate binary data for causal analysis using a structural causal model with optional additive noise.
+        Independent squashing functions are chosen for X and Y generation.
 
         Args:
             n (int): Number of samples to generate. Default is 500.
@@ -362,13 +363,15 @@ class BinaryIV(IVScenario):
             dict: Dictionary with all simulated data, model parameters, true ATE and PNS, and entropy values.
         """
         if seed is None:
-            seed = np.random.randint(0, 1e6)
+            seed = np.random.randint(0, int(1e6))
         np.random.seed(seed)
 
-        # Randomly choose a squashing function
+        # Randomly choose separate squashing functions for X and Y
         squashers = datagen_util.get_squashers()
-        squasher_name = np.random.choice(list(squashers.keys()))
-        squasher = squashers[squasher_name]
+        squasher_X_name = np.random.choice(list(squashers.keys()))
+        squasher_Y_name = np.random.choice(list(squashers.keys()))
+        squasher_X = squashers[squasher_X_name]
+        squasher_Y = squashers[squasher_Y_name]
 
         # Coefficient defaults
         if b_U_X is None:
@@ -401,20 +404,20 @@ class BinaryIV(IVScenario):
         # Add noise to treatment assignment
         epsilon_X = np.zeros(n) if sigma_X == 0 else np.random.normal(0, sigma_X, size=n)
         logit_X = intercept_X + b_Z_X * Z + b_U_X * U + epsilon_X
-        p_X = squasher(logit_X)
+        p_X = squasher_X(logit_X)
         X = np.random.binomial(1, p_X)
 
         # Add noise to outcome assignment
         epsilon_Y = np.zeros(n) if sigma_Y == 0 else np.random.normal(0, sigma_Y, size=n)
         logit_Y = intercept_Y + b_X_Y * X + b_U_Y * U + epsilon_Y
-        p_Y = squasher(logit_Y)
+        p_Y = squasher_Y(logit_Y)
         Y = np.random.binomial(1, p_Y)
 
         # Potential outcomes without noise
         logit_Y1 = intercept_Y + b_X_Y * 1 + b_U_Y * U
         logit_Y0 = intercept_Y + b_X_Y * 0 + b_U_Y * U
-        p_Y1 = squasher(logit_Y1)
-        p_Y0 = squasher(logit_Y0)
+        p_Y1 = squasher_Y(logit_Y1)
+        p_Y0 = squasher_Y(logit_Y0)
         ATE_true = np.mean(p_Y1 - p_Y0)
         PNS_true = np.mean(p_Y1 * (1 - p_Y0))
 
@@ -442,9 +445,9 @@ class BinaryIV(IVScenario):
             'entropy_Y': datagen_util.entropy_of_array(Y),
             'sigma_X': sigma_X,
             'sigma_Y': sigma_Y,
-            'squasher_name': squasher_name
+            'squasher_X_name': squasher_X_name,
+            'squasher_Y_name': squasher_Y_name
         }
-
     
     # Convert float arrays to int64 for entropy calculation
     def safe_entropy(arr):

@@ -37,9 +37,7 @@ class ContinuousIV(IVScenario):
         N_points=50,
         replications=20,
         n=500,
-        seed=None,
-        allowed_functions=None
-    ):
+        seed=None):
         """
         Run simulations across a range of b_X_Y values with multiple replications per point,
         returning a DataFrame with all individual simulation results (not aggregated).
@@ -50,7 +48,6 @@ class ContinuousIV(IVScenario):
             replications (int): Number of replications per b_X_Y value.
             n (int): Sample size per simulation.
             seed (int or None): Optional base seed.
-            allowed_functions (list of str or None): If specified, restricts function choices.
 
         Returns:
             pd.DataFrame: All simulation results with repeated b_X_Y values.
@@ -64,8 +61,7 @@ class ContinuousIV(IVScenario):
                 result = ContinuousIV.generate_data(
                     n=n,
                     seed=sim_seed,
-                    b_X_Y=b_X_Y_val,
-                    allowed_functions=allowed_functions
+                    b_X_Y=b_X_Y_val
                 )
                 result['b_X_Y'] = b_X_Y_val
                 all_results.append(result)
@@ -73,7 +69,6 @@ class ContinuousIV(IVScenario):
         return pd.DataFrame(all_results)
 
 
-    
     @staticmethod
     def generate_data(
         n=500,
@@ -84,27 +79,12 @@ class ContinuousIV(IVScenario):
         b_U_X=None,
         b_X_Y=None,
         b_U_Y=None,
-        allowed_functions=None
     ):
         if seed is None:
             seed = np.random.randint(0, 1e6)
         np.random.seed(seed)
 
-        # Function dictionary
-        G_all = {
-            "identity": lambda x: x,
-            "sin": np.sin,
-            "cos": np.cos,
-            "tanh": np.tanh,
-            "log1p_abs": lambda x: np.log1p(np.abs(x)),
-            "exp_neg_sq": lambda x: np.exp(-x**2),
-            "sigmoid": lambda x: 1 / (1 + np.exp(-x)),
-            "exp_clipped": lambda x: np.exp(np.clip(x, -5, 5))
-        }
-
-        G = {k: v for k, v in G_all.items() if allowed_functions is None or k in allowed_functions}
-
-        # Coefficients
+        # Structural coefficients
         if sigma_X is None:
             sigma_X = np.abs(np.random.normal(0, 1))
         if sigma_Y is None:
@@ -118,45 +98,45 @@ class ContinuousIV(IVScenario):
         if b_U_Y is None:
             b_U_Y = np.random.normal(0, 1)
 
-        # Random nonlinearities
-        g_Z_X_name = np.random.choice(list(G.keys()))
-        g_U_X_name = np.random.choice(list(G.keys()))
-        g_X_Y_name = np.random.choice(list(G.keys()))
-        g_U_Y_name = np.random.choice(list(G.keys()))
-
-        g_Z_X = G[g_Z_X_name]
-        g_U_X = G[g_U_X_name]
-        g_X_Y = G[g_X_Y_name]
-        g_U_Y = G[g_U_Y_name]
-
-        # Binary instrument and confounder
+        # Binary instrument and unobserved confounder
         Z = np.random.binomial(1, 0.5, n)
         U = np.random.binomial(1, 0.5, n)
 
-        # Latent X and stochastic binarization
-        X_latent = b_Z_X * g_Z_X(Z) + b_U_X * g_U_X(U) + np.random.normal(0, sigma_X, n)
+        # Latent treatment score and stochastic binarization
+        X_latent = b_Z_X * Z + b_U_X * U + np.random.normal(0, sigma_X, n)
 
-        # Squashing functions to map latent X to [0,1] for Bernoulli sampling
-        squashers = {
-            "sigmoid": lambda x: 1 / (1 + np.exp(-x)),
-            "tanh_scaled": lambda x: 0.5 * (1 + np.tanh(x)),
-            "softplus": lambda x: (np.log1p(np.exp(x))) / (1 + np.log1p(np.exp(x))),
-            "probit": lambda x: norm.cdf(x),
-        }
-
+        squashers = datagen_util.get_squashers()
         squash_name = np.random.choice(list(squashers.keys()))
         squasher = squashers[squash_name]
         p_X = squasher(X_latent)
         X = np.random.binomial(1, p_X)
 
-        # Continuous outcome (clipped to [-100, 100])
+        # Outcome nonlinearity
+        G_all = {
+            "identity": lambda x: x,
+            "sin": np.sin,
+            "cos": np.cos,
+            "tanh": np.tanh,
+            "log1p_abs": lambda x: np.log1p(np.abs(x)),
+            "exp_neg_sq": lambda x: np.exp(-x**2),
+            "sigmoid": lambda x: 1 / (1 + np.exp(-x)),
+            "exp_clipped": lambda x: np.exp(np.clip(x, -5, 5))
+        }
+        g_Y_name = np.random.choice(list(G_all.keys()))
+        g_Y = G_all[g_Y_name]
+
+        # Outcome Y
         epsilon_Y = np.random.normal(0, sigma_Y, n)
-        Y_raw = b_X_Y * g_X_Y(X) + b_U_Y * g_U_Y(U) + epsilon_Y
-        Y = np.clip(Y_raw, -20, 20)
+        Y_raw = b_X_Y * X + b_U_Y * U + epsilon_Y
+        Y = np.clip(g_Y(Y_raw), -20, 20)
 
         # Counterfactual outcomes
-        Y1 = np.clip(b_X_Y * g_X_Y(1) + b_U_Y * g_U_Y(U) + np.random.normal(0, sigma_Y, n), -20, 20)
-        Y0 = np.clip(b_X_Y * g_X_Y(0) + b_U_Y * g_U_Y(U) + np.random.normal(0, sigma_Y, n), -20, 20)
+        eps1 = np.random.normal(0, sigma_Y, n)
+        eps0 = np.random.normal(0, sigma_Y, n)
+        Y1_raw = b_X_Y * 1 + b_U_Y * U + eps1
+        Y0_raw = b_X_Y * 0 + b_U_Y * U + eps0
+        Y1 = np.clip(g_Y(Y1_raw), -20, 20)
+        Y0 = np.clip(g_Y(Y0_raw), -20, 20)
 
         ATE_true = np.mean(Y1 - Y0)
         PNS_true = np.mean((Y1 > Y0).astype(float))
@@ -169,11 +149,8 @@ class ContinuousIV(IVScenario):
             'b_U_Y': b_U_Y,
             'sigma_X': sigma_X,
             'sigma_Y': sigma_Y,
-            'g_Z_X': g_Z_X_name,
-            'g_U_X': g_U_X_name,
-            'g_X_Y': g_X_Y_name,
-            'g_U_Y': g_U_Y_name,
             'squash_X': squash_name,
+            'g_Y': g_Y_name,
             'ATE_true': ATE_true,
             'PNS_true': PNS_true,
             'p_Y1_mean': np.mean(Y1),
