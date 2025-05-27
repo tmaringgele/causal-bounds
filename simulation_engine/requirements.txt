@@ -10,3 +10,4 @@ rpy2
 cvxpy
 linearmodels
 pyomo
+pulp
