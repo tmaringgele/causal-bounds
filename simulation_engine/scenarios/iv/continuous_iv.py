@@ -4,18 +4,25 @@ import numpy as np
 import pandas as pd
 from simulation_engine.util.datagen_util import datagen_util
 from scipy.stats import norm
+from simulation_engine.algorithms.zhang_bareinboim import ZhangBareinboim
 
 
 class ContinuousIV(IVScenario):
+
+    AVAILABLE_ALGORITHMS = {
+        "ATE_zhangbareinboim": lambda self: ZhangBareinboim.bound_ATE(self.data)
+    }
+
     def __init__(self, dag, dataframe_cont, bin_size=10):
         super().__init__(dag)
         self.bin_size = bin_size
+        self.data = dataframe_cont
         binned_data = self._bin_data(dataframe_cont)
         # Create internal binary IV object
         self.binary_iv_scenario = BinaryIV(dag, binned_data)
 
     def _bin_data(self, dataframe_cont):
-        print("Binning continuous data with bin size:", self.bin_size, 'from:', dataframe_cont)
+        # print("Binning continuous data with bin size:", self.bin_size, 'from:', dataframe_cont)
         return 'binned data'  
     
 
