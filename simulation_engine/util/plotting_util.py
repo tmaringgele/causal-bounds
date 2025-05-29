@@ -4,6 +4,7 @@ import pandas as pd
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
 import numpy as np
+from simulation_engine.util.alg_util import AlgUtil
 
 class PlottingUtil:
     """
@@ -63,21 +64,44 @@ class PlottingUtil:
         else:
             filtered_algorithms = algorithms
 
+        
+
         stats = []
         for algorithm in filtered_algorithms:
             if f'{algorithm}_bound_valid' in dataframe.columns:
+                                
+                query = algorithm.split('_')[0]  # Extract query type from algorithm name
+
+                #make sure all failed or invalid bounds have trivial ceils
+                ## if _bound_failed=True or _bound_valid=False , lower and upper bounds are set to trivial ceils
+                lower_col = f'{algorithm}_bound_lower'
+                upper_col = f'{algorithm}_bound_upper'
+                failed_mask = dataframe[f'{algorithm}_bound_failed'] == True
+                invalid_mask = (dataframe[f'{algorithm}_bound_failed'] == False) & (dataframe[f'{algorithm}_bound_valid'] == False)
+                ## Set trivial ceils: lower=0, upper=1 for failed or invalid bounds
+                dataframe.loc[failed_mask | invalid_mask, lower_col] = AlgUtil.get_trivial_Ceils(query)[0]
+                dataframe.loc[failed_mask | invalid_mask, upper_col] = AlgUtil.get_trivial_Ceils(query)[1]
+                ## recompute the bound width
+                dataframe[f'{algorithm}_bound_width'] = dataframe[upper_col] - dataframe[lower_col]
+
+
+
                 failed_bounds = dataframe[dataframe[f'{algorithm}_bound_failed']].shape[0]
                 without_failed = dataframe[dataframe[f'{algorithm}_bound_failed'] == False]
                 invalid_bounds = without_failed[without_failed[f'{algorithm}_bound_valid'] == False].shape[0]
                 without_failed_and_invalid = without_failed[without_failed[f'{algorithm}_bound_valid'] == True]
                 fail_rate = failed_bounds / len(dataframe) * 100
                 invalid_rate = invalid_bounds / (len(dataframe) - failed_bounds) * 100 if (len(dataframe) - failed_bounds) > 0 else np.nan
+                # compute the bound width from ALL bounds (wether failed/invalid or not)
+                bound_width = dataframe[f'{algorithm}_bound_width'].mean() 
+                # compute the net bound width from only valid bounds
                 net_bound_width = without_failed_and_invalid[f'{algorithm}_bound_width'].mean()
                 stats.append({
                     'Algorithm': algorithm,
                     'Fail Rate (%)': f"{fail_rate:.2f}",
                     'Invalid Rate (%)': f"{invalid_rate:.2f}",
-                    'Net Bound Width': f"{net_bound_width:.4f}" if net_bound_width is not None else "N/A"
+                    'Net Bound Width': f"{net_bound_width:.4f}" if net_bound_width is not None else "N/A",
+                    'Bound Width': f"{bound_width:.4f}" if bound_width is not None else "N/A"
                 })
             else:
                 stats.append({
