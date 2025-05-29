@@ -10,20 +10,30 @@ from simulation_engine.algorithms.zhang_bareinboim import ZhangBareinboim
 class ContinuousIV(IVScenario):
 
     AVAILABLE_ALGORITHMS = {
-        "ATE_zhangbareinboim": lambda self: ZhangBareinboim.bound_ATE(self.data)
+        "ATE_zhangbareinboim": lambda self: ZhangBareinboim.bound_ATE(self.data),
+        "ATE_causaloptim": lambda self: self.binaryIV.run(['ATE_causaloptim'])
     }
 
-    def __init__(self, dag, dataframe_cont, bin_size=10):
+    def __init__(self, dag, dataframe_cont, cutoff=.5):
         super().__init__(dag)
-        self.bin_size = bin_size
+        self.cutoff = cutoff
         self.data = dataframe_cont
         binned_data = self._bin_data(dataframe_cont)
         # Create internal binary IV object
-        self.binary_iv_scenario = BinaryIV(dag, binned_data)
+        self.binaryIV = BinaryIV(dag, binned_data)
 
-    def _bin_data(self, dataframe_cont):
-        # print("Binning continuous data with bin size:", self.bin_size, 'from:', dataframe_cont)
-        return 'binned data'  
+    def _bin_data(self, dataframe_cont, cutoff=0.5):
+        data = dataframe_cont.copy()
+        # Ensure data['Y'] is a 1D array or Series of scalars before binarization
+        for idx, row in data.iterrows():
+            y_array = row['Y']
+            #for each element of y_array
+            for i in range(len(y_array)):
+                #set to 1 if greater than cutoff, else 0
+                y_array[i] = 1 if y_array[i] > cutoff else 0
+            data.at[idx, 'Y'] = y_array
+            
+        return data  
     
 
     
