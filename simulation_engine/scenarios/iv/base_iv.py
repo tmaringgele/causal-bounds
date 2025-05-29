@@ -47,7 +47,7 @@ class IVScenario(ABC):
         current_timestamp = datetime.now().isoformat()
         return {"runtimes": runtimes, "timestamp": current_timestamp}
     
-    def get_algorithms(self, query):
+    def get_algorithms(self, query=None):
         """
         Get the available algorithms for a given query.
 

@@ -11,10 +11,10 @@ class ContinuousIV(IVScenario):
 
     AVAILABLE_ALGORITHMS = {
         "ATE_zhangbareinboim": lambda self: ZhangBareinboim.bound_ATE(self.data),
-        "ATE_causaloptim": lambda self: self.binaryIV.run(['ATE_causaloptim'])
+        "ATE_causaloptim-binned": lambda self: self.run_binaryIV('ATE_causaloptim')
     }
 
-    def __init__(self, dag, dataframe_cont, cutoff=.5):
+    def __init__(self, dag, dataframe_cont, cutoff=0.5):
         super().__init__(dag)
         self.cutoff = cutoff
         self.data = dataframe_cont
@@ -35,6 +35,36 @@ class ContinuousIV(IVScenario):
             
         return data  
     
+    def run_binaryIV(self, algorithm='ATE_causaloptim'):
+        """
+        Run the binary IV algorithm on the continuous IV data.
+
+        Args:
+            algorithm (str): The name of the algorithm to run. Default is 'ATE_causaloptim'.
+
+        Returns:
+            pd.DataFrame: The results of the binary IV algorithm.
+        """
+        if algorithm not in self.binaryIV.get_algorithms():
+            raise ValueError(f"Algorithm '{algorithm}' is not available.")
+        
+        print("Entering binned Binary IV Scenario for algorithm:", algorithm)
+        # Run the specified algorithm on the binary IV object
+        self.binaryIV.run([algorithm])
+
+        # add the result cols to the continuous IV data
+        # they all start with the algorithm name
+        for col in self.binaryIV.data.columns:
+            if col.startswith(algorithm):
+                #add '-binned-0.5' to the algorithm name
+                col_without_name = col.replace(algorithm, '')
+                new_col_name = f"{algorithm}-binned{col_without_name}"
+                self.data[new_col_name] = self.binaryIV.data[col]
+
+        print("Exiting binned Binary IV Scenario.")
+        
+        return self.data
+
 
     
 
