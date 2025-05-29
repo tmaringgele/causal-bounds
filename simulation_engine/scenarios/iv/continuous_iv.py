@@ -11,7 +11,8 @@ class ContinuousIV(IVScenario):
 
     AVAILABLE_ALGORITHMS = {
         "ATE_zhangbareinboim": lambda self: ZhangBareinboim.bound_ATE(self.data),
-        "ATE_causaloptim-binned": lambda self: self.run_binaryIV('ATE_causaloptim')
+        "ATE_causaloptim-binned": lambda self: self.run_binaryIV('ATE_causaloptim'),
+        "ATE_autobound-binned": lambda self: self.run_binaryIV('ATE_autobound'),
     }
 
     def __init__(self, dag, dataframe_cont, cutoff=0.5):
