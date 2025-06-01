@@ -309,6 +309,25 @@ class APID(torch.nn.Module):
 
             self.ema_q.update()
 
+    def get_bounds(self, factual_outcome, factual_treatment, counterfactual_treatment, alpha=0.05, n_samples=500):
+        """
+        Compute bounds for E[Y_a | A=a', Y=y'] via abduction–action–prediction.
+        """
+        # Step 1: Use factual model to abduce latent u
+        u = self.apids[factual_treatment].backward(
+            y=factual_outcome,
+            aug_mode='q',
+            n_quantiles=n_samples
+        )  # shape: (n_samples, dim_u)
+
+        # Step 2: Push u through counterfactual model
+        y_cf = self.apids[counterfactual_treatment].forward(u)  # shape: (n_samples, 1)
+
+        # Step 3: Return quantiles (e.g., 5th–95th percentile as bounds)
+        lower = torch.quantile(y_cf, alpha / 2)
+        upper = torch.quantile(y_cf, 1 - alpha / 2)
+        return lower.detach().cpu(), upper.detach().cpu()
+
 
 if __name__ == '__main__':
     args = DictConfig({'model': {'dim_u': 2, 'n_trans': 1, 'aug_mode': 's', 'n_quantiles': 20, 'eps': 0.5}})
@@ -321,3 +340,5 @@ if __name__ == '__main__':
     p_y = dist.Normal(torch.zeros((1, )) + 0.0, torch.ones((1, )))
     y = p_y.sample((1000, ))
     p1.log_prob(y)
+
+    

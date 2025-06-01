@@ -35,7 +35,28 @@ def main(args: DictConfig):
     #     pass
 
     model.mlflow_logger.experiment.set_terminated(model.mlflow_logger.run_id) if args.exp.logging else None
+    # After training
+    if hasattr(args.dataset, "Y_f"):
+        bounds = []
+        y_f_list = args.dataset.Y_f if isinstance(args.dataset.Y_f, list) else [args.dataset.Y_f]
+        for y_f in y_f_list:
+            y_f_tensor = torch.tensor([[y_f]], dtype=torch.float32).to(args.exp.device)
 
+            # Assuming binary treatment: factual A = 0, counterfactual A = 1
+            cf_lb, cf_ub = model.get_bounds(
+                factual_outcome=y_f_tensor,
+                factual_treatment=args.dataset.T_f,
+                counterfactual_treatment=1 - args.dataset.T_f
+            )
+
+            print(f"Counterfactual bounds for Y_f = {y_f}: [{cf_lb.item():.4f}, {cf_ub.item():.4f}]")
+            bounds.append((y_f, cf_lb.item(), cf_ub.item()))
+
+    # Save bounds to file
+    print("\nHere come the ECOU bounds:")
+    for y_f, lb, ub in bounds:
+        print(f"{y_f}: [{lb:.3f}, {ub:.3f}]\n")
+    # python runnables/train_apid.py +dataset=multi_modal +model=apid exp.seed=10 exp.logging=True exp.device=cpu
 
 if __name__ == "__main__":
     main()
