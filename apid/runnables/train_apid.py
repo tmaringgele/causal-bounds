@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 @hydra.main(config_name=f'config.yaml', config_path='../config/')
 def main(args: DictConfig):
+    print("Args:", args)
 
     # Non-strict access to fields
     OmegaConf.set_struct(args, False)
@@ -56,6 +57,8 @@ def main(args: DictConfig):
     print("\nHere come the ECOU bounds:")
     for y_f, lb, ub in bounds:
         print(f"{y_f}: [{lb:.3f}, {ub:.3f}]\n")
+    # mlflow server --port=5000
+    # $env:PYTHONPATH = "."
     # python runnables/train_apid.py +dataset=multi_modal +model=apid exp.seed=10 exp.logging=True exp.device=cpu
 
 if __name__ == "__main__":
