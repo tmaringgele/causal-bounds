@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import pandas as pd
 
-from src import ROOT_PATH
+from simulation_engine.algorithms.apid_src.src import ROOT_PATH
 
 
 class LockdownData:

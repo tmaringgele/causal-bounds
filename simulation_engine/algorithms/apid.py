@@ -5,18 +5,73 @@ from omegaconf import DictConfig, OmegaConf
 from hydra.utils import instantiate
 import numpy as np
 from lightning_fabric.utilities.seed import seed_everything
+from os.path import abspath, dirname
+from types import SimpleNamespace
+import torch
+import numpy as np
+from simulation_engine.algorithms.apid_src.src.models.apid import APID
 
 
-class APID:
+
+
+class Apid:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
     # torch.set_default_dtype(torch.double)
 
 
     @staticmethod
-    @hydra.main(config_name=f'config.yaml', config_path='./apid/config/')
+    def run_direct():
+        # 1. Define a fake dataset (replace with your own!)
+        n = 1000
+        Y0 = torch.tensor(np.random.normal(loc=0.0, scale=1.0, size=(n, 1)), dtype=torch.float32)
+        Y1 = torch.tensor(np.random.normal(loc=1.5, scale=1.0, size=(n, 1)), dtype=torch.float32)
+        data_dict = {'Y0': Y0, 'Y1': Y1}
+
+        # 2. Create config manually (without Hydra)
+        args = SimpleNamespace(
+            model=SimpleNamespace(
+                name='apid',
+                dim_u=2,
+                n_trans=15,
+                tol=1e-4,
+                aug_mode='s',
+                n_quantiles=32,
+                eps=0.5,
+                batch_size=32,
+                burn_in_epochs=10,
+                q_epochs=10,
+                curv_epochs=3,
+                noise_std=0.001,
+                lr=0.01,
+                cf_only=True,
+                ema_q=0.99,
+                q_coeff=2.0,
+                curv_coeff=0.0
+            ),
+            dataset=SimpleNamespace(name='custom'),
+            exp=SimpleNamespace(device='cpu', logging=False, seed=0, mlflow_uri=None)
+        )
+
+        # 3. Instantiate and train model
+        model = APID(args)
+        f_dict = {'Y_f': torch.tensor([[0.0]]), 'T_f': 0}  # factual outcome Y=0.0, A=0
+        model.fit(data_dict, f_dict, log=False)
+
+        # 4. Get bounds
+        cf_lb, cf_ub = model.get_bounds(
+            factual_outcome=torch.tensor([[0.0]]),
+            factual_treatment=0,
+            counterfactual_treatment=1
+        )
+        print(f"ECOU bounds: [{cf_lb.item():.3f}, {cf_ub.item():.3f}]")
+
+    @staticmethod
+    @hydra.main(config_name=f'config.yaml', config_path='./apid_src/config/')
     def run(args: DictConfig):
-        # Args:
+
+
+
 
         # Non-strict access to fields
         OmegaConf.set_struct(args, False)

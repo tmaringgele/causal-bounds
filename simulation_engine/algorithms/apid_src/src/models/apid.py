@@ -13,8 +13,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from torch_ema import ExponentialMovingAverage
 
-from src.features.projection import ProjectedAugmentedDistribution, ProjectionAugmentation
-from src.features.residual import ResidualTransform
+from simulation_engine.algorithms.apid_src.src.features.projection import ProjectedAugmentedDistribution, ProjectionAugmentation
+from simulation_engine.algorithms.apid_src.src.features.residual import ResidualTransform
 
 
 class ConditionalAPID(torch.nn.Module):
