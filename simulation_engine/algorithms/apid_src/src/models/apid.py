@@ -309,24 +309,52 @@ class APID(torch.nn.Module):
 
             self.ema_q.update()
 
-    def get_bounds(self, factual_outcome, factual_treatment, counterfactual_treatment, alpha=0.05, n_samples=500):
+    def get_bounds(
+        self,
+        factual_outcome,
+        factual_treatment,
+        counterfactual_treatment,
+        alpha=0.05,
+        n_samples=500,
+        mode="quantile"
+    ):
         """
         Compute bounds for E[Y_a | A=a', Y=y'] via abduction–action–prediction.
+
+        mode = "quantile" → sample-based bounds using fitted APID
+        mode = "csm" → curvature-constrained min/max bounds (per paper)
         """
-        # Step 1: Use factual model to abduce latent u
-        u = self.apids[factual_treatment].backward(
-            y=factual_outcome,
-            aug_mode='q',
-            n_quantiles=n_samples
-        )  # shape: (n_samples, dim_u)
+        if mode == "quantile":
+            # Standard: use quantiles of the forward samples
+            u = self.apids[factual_treatment].backward(
+                y=factual_outcome,
+                aug_mode='q',
+                n_quantiles=n_samples
+            )
+            y_cf = self.apids[counterfactual_treatment].forward(u)
+            lower = torch.quantile(y_cf, alpha / 2)
+            upper = torch.quantile(y_cf, 1 - alpha / 2)
+            return lower.detach().cpu(), upper.detach().cpu()
 
-        # Step 2: Push u through counterfactual model
-        y_cf = self.apids[counterfactual_treatment].forward(u)  # shape: (n_samples, 1)
+        elif mode == "csm":
+            # Use min/max optimized APIDs (trained via curvature-constrained objective)
+            u = self.min_apids[factual_treatment].backward(
+                y=factual_outcome,
+                aug_mode='q',
+                n_quantiles=n_samples
+            )
 
-        # Step 3: Return quantiles (e.g., 5th–95th percentile as bounds)
-        lower = torch.quantile(y_cf, alpha / 2)
-        upper = torch.quantile(y_cf, 1 - alpha / 2)
-        return lower.detach().cpu(), upper.detach().cpu()
+            # Forward through max and min models
+            y_cf_max = self.max_apids[counterfactual_treatment].forward(u)
+            y_cf_min = self.min_apids[counterfactual_treatment].forward(u)
+
+            # Take means — these are the CSM-bounded expectations
+            lower = y_cf_min.mean()
+            upper = y_cf_max.mean()
+            return lower.detach().cpu(), upper.detach().cpu()
+
+        else:
+            raise ValueError(f"Unknown mode: {mode}. Use 'quantile' or 'csm'.")
 
 
 if __name__ == '__main__':

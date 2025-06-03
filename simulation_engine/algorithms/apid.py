@@ -20,12 +20,11 @@ class Apid:
     # torch.set_default_dtype(torch.double)
 
 
-    @staticmethod
     def run_from_generate_data(data):
         # 1. Get synthetic IV-style data
         Y = data['Y']
         X = data['X']
-        
+
         # Build treatment groups
         Y0 = torch.tensor(Y[X == 0], dtype=torch.float32).reshape(-1, 1)
         Y1 = torch.tensor(Y[X == 1], dtype=torch.float32).reshape(-1, 1)
@@ -58,8 +57,6 @@ class Apid:
 
         # 3. Initialize model and select a factual input (for ECOU query)
         model = APID(args)
-        # Pick one factual input to run ECOU query on
-        # Example: a unit that received treatment=0 and had outcome Y ≈ 0.5
         idx = np.where((X == 0) & (np.abs(Y - 0.5) < 0.05))[0]
         if len(idx) == 0:
             print("No suitable factual units found with Y ≈ 0.5 and X = 0.")
@@ -70,10 +67,10 @@ class Apid:
         t_f = int(X[i])
         f_dict = {'Y_f': y_f, 'T_f': t_f}
 
-        # 4. Train APID on the generated data
+        # 4. Train APID
         model.fit(data_dict, f_dict, log=False)
 
-        # 5. Query bounds for the counterfactual treatment
+        # 5. ECOU bounds for selected unit
         t_cf = 1 - t_f
         cf_lb, cf_ub = model.get_bounds(
             factual_outcome=y_f,
@@ -83,9 +80,43 @@ class Apid:
             n_samples=500
         )
 
+        # 6. ATE bounds across entire dataset
+        ate_lb, ate_ub = Apid.get_ATE_bounds_from_model(model, X, Y, alpha=0.05, n_samples=500)
+
         print(f"Factual: A={t_f}, Y={y_f.item():.3f}")
         print(f"Counterfactual ECOU bounds (A={t_cf}): [{cf_lb.item():.3f}, {cf_ub.item():.3f}]")
+        print(f"APID ATE bounds: [{ate_lb:.3f}, {ate_ub:.3f}]")
         print(f"True ATE: {data['ATE_true']:.3f}, True PNS: {data['PNS_true']:.3f}")
+
+    @staticmethod
+    def get_ATE_bounds_from_model(model, X, Y, alpha=0.05, n_samples=500):
+        """
+        Compute ATE bounds by aggregating per-unit ECOU bounds.
+        """
+        lower_diffs = []
+        upper_diffs = []
+
+        for x_i, y_i in zip(X, Y):
+            y_tensor = torch.tensor([[y_i]], dtype=torch.float32)
+            x_i = int(x_i)
+
+            # Compute counterfactual bounds
+            lb_y1, ub_y1 = model.get_bounds(y_tensor, factual_treatment=x_i, counterfactual_treatment=1, 
+                                            alpha=alpha, n_samples=n_samples, mode='csm')
+            lb_y0, ub_y0 = model.get_bounds(y_tensor, factual_treatment=x_i, counterfactual_treatment=0,
+                                             alpha=alpha, n_samples=n_samples, mode='csm')
+
+            # ATE_i bounds = difference of factual and counterfactual bounds
+            lb_ate_i = lb_y1 - ub_y0
+            ub_ate_i = ub_y1 - lb_y0
+
+            lower_diffs.append(lb_ate_i)
+            upper_diffs.append(ub_ate_i)
+
+        ATE_lower = torch.stack(lower_diffs).mean().item()
+        ATE_upper = torch.stack(upper_diffs).mean().item()
+        return ATE_lower, ATE_upper
+
 
 
     @staticmethod
