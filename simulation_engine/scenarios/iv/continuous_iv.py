@@ -204,10 +204,8 @@ class ContinuousIV(IVScenario):
         Y = np.clip(g_Y(Y_raw), Y_clips['lower'], Y_clips['upper'])
 
         # Counterfactual outcomes
-        eps1 = np.random.normal(0, sigma_Y, n)
-        eps0 = np.random.normal(0, sigma_Y, n)
-        Y1_raw = b_X_Y * 1 + b_U_Y * U + eps1
-        Y0_raw = b_X_Y * 0 + b_U_Y * U + eps0
+        Y1_raw = b_X_Y * 1 + b_U_Y * g_U_Y(U) + epsilon_Y
+        Y0_raw = b_X_Y * 0 + b_U_Y * g_U_Y(U) + epsilon_Y
         Y1 = np.clip(g_Y(Y1_raw), Y_clips['lower'], Y_clips['upper'])
         Y0 = np.clip(g_Y(Y0_raw), Y_clips['lower'], Y_clips['upper'])
 

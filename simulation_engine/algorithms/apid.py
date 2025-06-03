@@ -21,6 +21,74 @@ class Apid:
 
 
     @staticmethod
+    def run_from_generate_data(data):
+        # 1. Get synthetic IV-style data
+        Y = data['Y']
+        X = data['X']
+        
+        # Build treatment groups
+        Y0 = torch.tensor(Y[X == 0], dtype=torch.float32).reshape(-1, 1)
+        Y1 = torch.tensor(Y[X == 1], dtype=torch.float32).reshape(-1, 1)
+        data_dict = {'Y0': Y0, 'Y1': Y1}
+
+        # 2. Build APID config (with curvature regularization enabled)
+        args = SimpleNamespace(
+            model=SimpleNamespace(
+                name='apid',
+                dim_u=2,
+                n_trans=15,
+                tol=1e-4,
+                aug_mode='s',
+                n_quantiles=32,
+                eps=0.5,
+                batch_size=32,
+                burn_in_epochs=10,
+                q_epochs=10,
+                curv_epochs=3,
+                noise_std=0.001,
+                lr=0.01,
+                cf_only=True,
+                ema_q=0.99,
+                q_coeff=2.0,
+                curv_coeff=1.0  # Enable curvature constraint!
+            ),
+            dataset=SimpleNamespace(name='synthetic_iv'),
+            exp=SimpleNamespace(device='cpu', logging=False, seed=0, mlflow_uri=None)
+        )
+
+        # 3. Initialize model and select a factual input (for ECOU query)
+        model = APID(args)
+        # Pick one factual input to run ECOU query on
+        # Example: a unit that received treatment=0 and had outcome Y ≈ 0.5
+        idx = np.where((X == 0) & (np.abs(Y - 0.5) < 0.05))[0]
+        if len(idx) == 0:
+            print("No suitable factual units found with Y ≈ 0.5 and X = 0.")
+            return
+
+        i = idx[0]
+        y_f = torch.tensor([[Y[i]]], dtype=torch.float32)
+        t_f = int(X[i])
+        f_dict = {'Y_f': y_f, 'T_f': t_f}
+
+        # 4. Train APID on the generated data
+        model.fit(data_dict, f_dict, log=False)
+
+        # 5. Query bounds for the counterfactual treatment
+        t_cf = 1 - t_f
+        cf_lb, cf_ub = model.get_bounds(
+            factual_outcome=y_f,
+            factual_treatment=t_f,
+            counterfactual_treatment=t_cf,
+            alpha=0.05,
+            n_samples=500
+        )
+
+        print(f"Factual: A={t_f}, Y={y_f.item():.3f}")
+        print(f"Counterfactual ECOU bounds (A={t_cf}): [{cf_lb.item():.3f}, {cf_ub.item():.3f}]")
+        print(f"True ATE: {data['ATE_true']:.3f}, True PNS: {data['PNS_true']:.3f}")
+
+
+    @staticmethod
     def run_direct():
         # 1. Define a fake dataset (replace with your own!)
         n = 1000
@@ -47,7 +115,7 @@ class Apid:
                 cf_only=True,
                 ema_q=0.99,
                 q_coeff=2.0,
-                curv_coeff=0.0
+                curv_coeff=0.0 #TODO: CHANGE 
             ),
             dataset=SimpleNamespace(name='custom'),
             exp=SimpleNamespace(device='cpu', logging=False, seed=0, mlflow_uri=None)
