@@ -103,6 +103,7 @@ class Apid:
 
         i = idx[0]
         y_f = torch.tensor([[Y[i]]], dtype=torch.float32, device=device)
+        print(f"Model trained on devuce: {device.type}")
         t_f = int(X[i])
         f_dict = {'Y_f': y_f, 'T_f': t_f}
 
