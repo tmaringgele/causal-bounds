@@ -100,7 +100,7 @@ class Apid:
             return
 
         i = idx[0]
-        y_f = torch.tensor([[Y[i]]], dtype=torch.float32)
+        y_f = torch.tensor([[Y[i]]], dtype=torch.float32, device=device)
         t_f = int(X[i])
         f_dict = {'Y_f': y_f, 'T_f': t_f}
 
@@ -119,7 +119,7 @@ class Apid:
         # )
 
         # 6. ATE bounds across entire dataset
-        ate_lb, ate_ub = Apid.get_ATE_bounds_from_model(model, X, Y, alpha=0.01, n_samples=500)
+        ate_lb, ate_ub = Apid.get_ATE_bounds_from_model(model, X, Y, alpha=0.01, n_samples=500, device=device)
 
         print(f"Factual: A={t_f}, Y={y_f.item():.3f}")
         # print(f"Counterfactual ECOU bounds (A={t_cf}): [{cf_lb.item():.3f}, {cf_ub.item():.3f}]")
@@ -128,7 +128,7 @@ class Apid:
         return ate_lb, ate_ub
 
     @staticmethod
-    def get_ATE_bounds_from_model(model, X, Y, alpha=0.05, n_samples=500):
+    def get_ATE_bounds_from_model(model, X, Y, alpha=0.05, n_samples=500, device):
         """
         Compute ATE bounds by aggregating per-unit ECOU bounds.
         Enforces correct bound ordering to avoid inverted intervals.
@@ -137,7 +137,7 @@ class Apid:
         upper_diffs = []
 
         for i, (x_i, y_i) in enumerate(zip(X, Y)):
-            y_tensor = torch.tensor([[y_i]], dtype=torch.float32)
+            y_tensor = torch.tensor([[y_i]], dtype=torch.float32, device=device)
             x_i = int(x_i)
 
             # Compute and sort counterfactual bounds to ensure proper order
