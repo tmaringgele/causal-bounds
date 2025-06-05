@@ -87,8 +87,10 @@ class Apid:
                 curv_coeff=0.2  # Enable curvature constraint!
             ),
             dataset=SimpleNamespace(name='synthetic_iv'),
-            exp=SimpleNamespace(device= torch.set_default_device(device), logging=False, seed=0, mlflow_uri=None)
+            exp=SimpleNamespace(device=device , logging=False, seed=0, mlflow_uri=None)
         )
+
+        torch.set_default_device(device)
 
         # 3. Initialize model and select a factual input (for ECOU query)
         model = APID(args)
