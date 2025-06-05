@@ -121,7 +121,7 @@ class Apid:
         # )
 
         # 6. ATE bounds across entire dataset
-        ate_lb, ate_ub = Apid.get_ATE_bounds_from_model(model, X, Y, alpha=0.01, n_samples=500, device=device)
+        ate_lb, ate_ub = Apid.get_ATE_bounds_from_model(model, X, Y, alpha=0.01, n_samples=500)
 
         print(f"Factual: A={t_f}, Y={y_f.item():.3f}")
         # print(f"Counterfactual ECOU bounds (A={t_cf}): [{cf_lb.item():.3f}, {cf_ub.item():.3f}]")
