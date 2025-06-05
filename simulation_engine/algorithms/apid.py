@@ -75,7 +75,7 @@ class Apid:
                 aug_mode='s',
                 n_quantiles=32,
                 eps=0.5,
-                batch_size=32,
+                batch_size=128,
                 burn_in_epochs=100,
                 q_epochs=100,
                 curv_epochs=30,
