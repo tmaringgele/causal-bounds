@@ -148,6 +148,7 @@ class APID(torch.nn.Module):
 
         self.device = args.exp.device
         self.to(self.device)
+        print(f'APID model initialized on device: {self.device}')
 
         # MlFlow Logger
         if args.exp.logging:
