@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import torch
 import numpy as np
 from simulation_engine.algorithms.apid_src.src.models.apid import APID
+from simulation_engine.util.alg_util import AlgUtil
 
 
 
@@ -18,6 +19,40 @@ class Apid:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
     # torch.set_default_dtype(torch.double)
+
+    ALG_NAME = "apid"
+
+    def bound_ATE(data):
+        query = "ATE"
+        for idx, sim in data.iterrows():
+
+            failed = False
+            try:
+                bound_lower, bound_upper  = Apid.run_from_generate_data(sim)
+                print(f"bound_ATE for idx {idx}: {bound_lower}, {bound_upper}")
+            except Exception as e:
+                print(f"Error in ZhangBareinboim: {e}")
+                failed = True
+            #Flatten bounds to trivial ceils
+            if failed | (bound_upper > AlgUtil.get_trivial_Ceils(query)[1]):
+                bound_upper = AlgUtil.get_trivial_Ceils(query)[1] 
+            if failed | (bound_lower < AlgUtil.get_trivial_Ceils(query)[0]): 
+                bound_lower = AlgUtil.get_trivial_Ceils(query)[0]
+
+
+            bounds_valid = bound_lower <= sim[query+'_true'] <= bound_upper
+            bounds_width = bound_upper - bound_lower
+
+            
+            data.at[idx, query+'_'+Apid.ALG_NAME+'_bound_lower'] = bound_lower
+            data.at[idx, query+'_'+Apid.ALG_NAME+'_bound_upper'] = bound_upper
+            data.at[idx, query+'_'+Apid.ALG_NAME+'_bound_valid'] = bounds_valid
+            data.at[idx, query+'_'+Apid.ALG_NAME+'_bound_width'] = bounds_width
+            data.at[idx, query+'_'+Apid.ALG_NAME+'_bound_failed'] = failed
+
+        return data
+
+
 
 
     def run_from_generate_data(data):
@@ -49,7 +84,7 @@ class Apid:
                 cf_only=True,
                 ema_q=0.99,
                 q_coeff=2.0,
-                curv_coeff=1.0  # Enable curvature constraint!
+                curv_coeff=0.2  # Enable curvature constraint!
             ),
             dataset=SimpleNamespace(name='synthetic_iv'),
             exp=SimpleNamespace(device='cpu', logging=False, seed=0, mlflow_uri=None)
@@ -72,43 +107,64 @@ class Apid:
 
         # 5. ECOU bounds for selected unit
         t_cf = 1 - t_f
-        cf_lb, cf_ub = model.get_bounds(
-            factual_outcome=y_f,
-            factual_treatment=t_f,
-            counterfactual_treatment=t_cf,
-            alpha=0.05,
-            n_samples=500
-        )
+        # cf_lb, cf_ub = model.get_bounds(
+        #     factual_outcome=y_f,
+        #     factual_treatment=t_f,
+        #     counterfactual_treatment=t_cf,
+        #     alpha=0.05,
+        #     n_samples=500,
+        #     mode='csm'
+        # )
 
         # 6. ATE bounds across entire dataset
         ate_lb, ate_ub = Apid.get_ATE_bounds_from_model(model, X, Y, alpha=0.05, n_samples=500)
 
         print(f"Factual: A={t_f}, Y={y_f.item():.3f}")
-        print(f"Counterfactual ECOU bounds (A={t_cf}): [{cf_lb.item():.3f}, {cf_ub.item():.3f}]")
+        # print(f"Counterfactual ECOU bounds (A={t_cf}): [{cf_lb.item():.3f}, {cf_ub.item():.3f}]")
         print(f"APID ATE bounds: [{ate_lb:.3f}, {ate_ub:.3f}]")
         print(f"True ATE: {data['ATE_true']:.3f}, True PNS: {data['PNS_true']:.3f}")
+        return ate_lb, ate_ub
 
     @staticmethod
     def get_ATE_bounds_from_model(model, X, Y, alpha=0.05, n_samples=500):
         """
         Compute ATE bounds by aggregating per-unit ECOU bounds.
+        Enforces correct bound ordering to avoid inverted intervals.
         """
         lower_diffs = []
         upper_diffs = []
 
-        for x_i, y_i in zip(X, Y):
+        for i, (x_i, y_i) in enumerate(zip(X, Y)):
             y_tensor = torch.tensor([[y_i]], dtype=torch.float32)
             x_i = int(x_i)
 
-            # Compute counterfactual bounds
-            lb_y1, ub_y1 = model.get_bounds(y_tensor, factual_treatment=x_i, counterfactual_treatment=1, 
-                                            alpha=alpha, n_samples=n_samples, mode='csm')
-            lb_y0, ub_y0 = model.get_bounds(y_tensor, factual_treatment=x_i, counterfactual_treatment=0,
-                                             alpha=alpha, n_samples=n_samples, mode='csm')
+            # Compute and sort counterfactual bounds to ensure proper order
+            lb_y1, ub_y1 = sorted(model.get_bounds(
+                y_tensor,
+                factual_treatment=x_i,
+                counterfactual_treatment=1,
+                alpha=alpha,
+                n_samples=n_samples,
+                mode='csm'
+            ))
+            lb_y0, ub_y0 = sorted(model.get_bounds(
+                y_tensor,
+                factual_treatment=x_i,
+                counterfactual_treatment=0,
+                alpha=alpha,
+                n_samples=n_samples,
+                mode='csm'
+            ))
 
-            # ATE_i bounds = difference of factual and counterfactual bounds
+            # ATE_i bounds = worst-case subtraction
             lb_ate_i = lb_y1 - ub_y0
             ub_ate_i = ub_y1 - lb_y0
+
+            # Final safety check
+            if lb_ate_i > ub_ate_i:
+                print(f"[Warning] Inverted ATE bounds at unit {i}: "
+                    f"lb={lb_ate_i:.4f}, ub={ub_ate_i:.4f}. Fixing.")
+                lb_ate_i, ub_ate_i = min(lb_ate_i, ub_ate_i), max(lb_ate_i, ub_ate_i)
 
             lower_diffs.append(lb_ate_i)
             upper_diffs.append(ub_ate_i)
