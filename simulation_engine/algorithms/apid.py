@@ -81,10 +81,10 @@ class Apid:
                 curv_epochs=30,
                 noise_std=0.001,
                 lr=0.01,
-                cf_only=True,
+                cf_only=False,
                 ema_q=0.99,
-                q_coeff=0.05,
-                curv_coeff=0.06  # Enable curvature constraint!
+                q_coeff=0.005,
+                curv_coeff=0.1  # Enable curvature constraint!
             ),
             dataset=SimpleNamespace(name='synthetic_iv'),
             exp=SimpleNamespace(device=device , logging=False, seed=0, mlflow_uri=None)
@@ -119,7 +119,7 @@ class Apid:
         # )
 
         # 6. ATE bounds across entire dataset
-        ate_lb, ate_ub = Apid.get_ATE_bounds_from_model(model, X, Y, alpha=0.05, n_samples=500)
+        ate_lb, ate_ub = Apid.get_ATE_bounds_from_model(model, X, Y, alpha=0.01, n_samples=500)
 
         print(f"Factual: A={t_f}, Y={y_f.item():.3f}")
         # print(f"Counterfactual ECOU bounds (A={t_cf}): [{cf_lb.item():.3f}, {cf_ub.item():.3f}]")
