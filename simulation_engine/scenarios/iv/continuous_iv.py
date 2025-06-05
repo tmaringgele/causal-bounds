@@ -16,6 +16,7 @@ class ContinuousIV(IVScenario):
         "ATE_zhangbareinboim": lambda self: ZhangBareinboim.bound_ATE(self.data),
         "ATE_causaloptim-binned": lambda self: self.run_binaryIV('ATE_causaloptim'),
         "ATE_autobound-binned": lambda self: self.run_binaryIV('ATE_autobound'),
+        "ATE_zaffalonbounds-binned": lambda self: self.run_binaryIV('ATE_zaffalonbounds'),
         "ATE_2SLS-0.99": lambda self: self.bound_ate_2SLS(0.99),
         "ATE_2SLS-0.98": lambda self: self.bound_ate_2SLS(0.98),
         "ATE_2SLS-0.95": lambda self: self.bound_ate_2SLS(0.95),

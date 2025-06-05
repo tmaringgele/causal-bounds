@@ -49,6 +49,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run simulations.")
     parser.add_argument("N_simulations", type=int, help="Number of simulations to run")
     parser.add_argument("--R_path", type=str, default="D:/Program Files/R/R-4.3.1", help="Path to R installation")
-    ## Example usage: python .\run_simulation.py 2 --R_path "D:/Program Files/R-4.5.0"
+    ## Example usage: python .\run_binary_simulation.py 2 --R_path "D:/Program Files/R-4.5.0"
     args = parser.parse_args()
     main(args.N_simulations, args.R_path)

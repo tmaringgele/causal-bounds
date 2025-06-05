@@ -41,13 +41,14 @@ class ZaffalonBounds:
             failed = False
 
         except Exception as e:
+            bound_lower = AlgUtil.get_trivial_Ceils(query)[0]
+            bound_upper = AlgUtil.get_trivial_Ceils(query)[1]
             print(f"Error in Zaffalon: {e}")
             failed = True
 
         #Flatten bounds to trivial ceils
-        if failed | (bound_upper > AlgUtil.get_trivial_Ceils(query)[1]):
+        if failed:
             bound_upper = AlgUtil.get_trivial_Ceils(query)[1] 
-        if failed | (bound_lower < AlgUtil.get_trivial_Ceils(query)[0]): 
             bound_lower = AlgUtil.get_trivial_Ceils(query)[0]
 
         bounds_valid = bound_lower <= row_dict[query+'_true'] <= bound_upper
