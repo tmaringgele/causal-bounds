@@ -163,8 +163,9 @@ class APID(torch.nn.Module):
 
     def get_train_dataloader(self, train_data_dict: dict, batch_size):
         training_data0, training_data1 = TensorDataset(train_data_dict['Y0']), TensorDataset(train_data_dict['Y1'])
-        return DataLoader(training_data0, batch_size=batch_size, shuffle=True, generator=torch.Generator(device=self.device)), \
-            DataLoader(training_data1, batch_size=batch_size, shuffle=True, generator=torch.Generator(device=self.device))
+        # Always use CPU generator for DataLoader
+        return DataLoader(training_data0, batch_size=batch_size, shuffle=True, generator=torch.Generator(device='cpu')), \
+            DataLoader(training_data1, batch_size=batch_size, shuffle=True, generator=torch.Generator(device='cpu'))
 
     def plot_forward(self, Y, apid):
         u = self.p_u.sample((Y.shape[0],))
