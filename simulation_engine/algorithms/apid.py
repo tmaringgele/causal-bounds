@@ -81,7 +81,7 @@ class Apid:
                 curv_epochs=30,
                 noise_std=0.001,
                 lr=0.01,
-                cf_only=False,
+                cf_only=True,
                 ema_q=0.99,
                 q_coeff=0.005,
                 curv_coeff=0.1  # Enable curvature constraint!
