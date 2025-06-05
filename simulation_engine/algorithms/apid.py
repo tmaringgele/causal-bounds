@@ -83,7 +83,7 @@ class Apid:
                 lr=0.01,
                 cf_only=True,
                 ema_q=0.99,
-                q_coeff=2.0,
+                q_coeff=0.05,
                 curv_coeff=0.2  # Enable curvature constraint!
             ),
             dataset=SimpleNamespace(name='synthetic_iv'),
