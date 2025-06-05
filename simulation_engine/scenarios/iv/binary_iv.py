@@ -235,7 +235,7 @@ class BinaryIV(IVScenario):
             self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_failed'] = failed    
 
     @staticmethod
-    def generate_data_rolling_ate(N_simulations=2000, n=500, seed=None, b_U_X=None, b_U_Y=None, b_Z_X=None, intercept_X=None, intercept_Y=None, p_U=None, p_Z=None, sigma_X=None, sigma_Y=None):
+    def generate_data_rolling_ate(N_simulations=2000, n=500, b_lower=-5, b_upper=5, seed=None, b_U_X=None, b_U_Y=None, b_Z_X=None, intercept_X=None, intercept_Y=None, p_U=None, p_Z=None, sigma_X=None, sigma_Y=None):
         """
         Generate data for a binary instrumental variable scenario.
 
@@ -262,7 +262,7 @@ class BinaryIV(IVScenario):
         # in the range of -5 to 5
         step_size = (5 - (-5)) / N_simulations
 
-        for b_X_Y in np.linspace(-5, 5, N_simulations):
+        for b_X_Y in np.linspace(b_lower, b_upper, N_simulations):
             result = BinaryIV._simulate_deterministic_data(
                 n=n,
                 seed=seed,

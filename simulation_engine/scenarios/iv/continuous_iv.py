@@ -254,18 +254,21 @@ class ContinuousIV(IVScenario):
         epsilon_Y = np.random.normal(0, sigma_Y, n)
         Y_raw = b_X_Y * X + b_U_Y * g_U_Y(U) + epsilon_Y
 
-        Y_clips = {
-            'lower': 0,
-            'upper': 1
-        }
+        # use squasher instead of clip for Y
+        squashers = datagen_util.get_squashers()
+        squash_Y_name = np.random.choice(list(squashers.keys()))
+        squasher_Y = squashers[squash_Y_name]
 
-        Y = np.clip(g_Y(Y_raw), Y_clips['lower'], Y_clips['upper'])
+        Y = squasher_Y(g_Y(Y_raw))
+        Y = np.clip(Y, 0, 1)
 
         # Counterfactual outcomes
         Y1_raw = b_X_Y * 1 + b_U_Y * g_U_Y(U) + epsilon_Y
         Y0_raw = b_X_Y * 0 + b_U_Y * g_U_Y(U) + epsilon_Y
-        Y1 = np.clip(g_Y(Y1_raw), Y_clips['lower'], Y_clips['upper'])
-        Y0 = np.clip(g_Y(Y0_raw), Y_clips['lower'], Y_clips['upper'])
+        Y1 = squasher_Y(g_Y(Y1_raw))
+        Y1 = np.clip(Y1, 0, 1)
+        Y0 = squasher_Y(g_Y(Y0_raw))
+        Y0 = np.clip(Y0, 0, 1)
 
         ATE_true = np.mean(Y1 - Y0)
         PNS_true = np.mean((Y1 > Y0).astype(float))
@@ -283,6 +286,7 @@ class ContinuousIV(IVScenario):
             'g_U_X': g_U_X_name,
             'g_U_Y': g_U_Y_name,
             'squash_X': squash_name,
+            'squash_Y': squash_Y_name,
             'g_Y': g_Y_name,
             'ATE_true': ATE_true,
             'PNS_true': PNS_true,
