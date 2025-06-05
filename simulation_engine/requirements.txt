@@ -38,3 +38,4 @@ scikit-learn
 omegaconf
 tqdm
 git+https://github.com/fadel/pytorch_ema
+torchvision
