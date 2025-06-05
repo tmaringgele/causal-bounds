@@ -189,29 +189,41 @@ class APID(torch.nn.Module):
         return p * max_value
 
     def fit(self, train_data_dict: dict, f_dict: dict, log: bool):
-        train_dataloaders = self.get_train_dataloader(train_data_dict, self.batch_size)
-        y_f, t_f, t_cf = f_dict['Y_f'], f_dict['T_f'], 1 - f_dict['T_f']
+        # Move training data to device once
+        train_data_dict = {
+            k: v.to(self.device) for k, v in train_data_dict.items()
+        }
+
+        # Move factual inputs to device
+        y_f, t_f = f_dict['Y_f'].to(self.device), f_dict['T_f']
+        t_cf = 1 - t_f
+
+        # Prepare outcome support on device
         support = [(train_data_dict['Y0'].min(), train_data_dict['Y0'].max()),
-                   (train_data_dict['Y1'].min(), train_data_dict['Y1'].max())]
-        cf_support = torch.tensor(support[t_cf])
+                (train_data_dict['Y1'].min(), train_data_dict['Y1'].max())]
+        cf_support = torch.tensor(support[t_cf], device=self.device)
+
         task_non_inf = {'min': False, 'max': False}
 
-        # Logging
-        self.mlflow_logger.log_hyperparams(self.hparams) if log else None
+        if log:
+            self.mlflow_logger.log_hyperparams(self.hparams)
 
-        # Burn-in for both models
+        # ---- Burn-in phase ----
+        train_dataloaders = self.get_train_dataloader(train_data_dict, self.batch_size)
         optimizers = [self.get_optimizer(apid.parameters()) for apid in self.apids]
+
         for step in tqdm(range(self.burn_in_epochs)):
-            ys = torch.tensor(next(iter(train_dataloaders[0]))[0]), torch.tensor(next(iter(train_dataloaders[1]))[0])
+            ys = (
+                next(iter(train_dataloaders[0]))[0].to(self.device),
+                next(iter(train_dataloaders[1]))[0].to(self.device)
+            )
 
             [optimizer.zero_grad() for optimizer in optimizers]
+
             for i, (y, optimizer, apid) in enumerate(zip(ys, optimizers, self.apids)):
-                # Fitting distribution
-                # Log-prob losses
                 y_noisy = y + self.noise_std * torch.randn_like(y)
-                log_prob = - apid.log_prob(y_noisy).mean()
-                # Wasserstein losses
-                u = self.p_u.sample((self.batch_size,))
+                log_prob = -apid.log_prob(y_noisy).mean()
+                u = self.p_u.sample((self.batch_size,)).to(self.device)
                 wd = wasserstein_1d(y, apid.forward(u)).mean()
                 loss = log_prob + wd
 
@@ -227,37 +239,36 @@ class APID(torch.nn.Module):
             self.plot_forward(train_data_dict['Y0'], self.apids[0])
             self.plot_forward(train_data_dict['Y1'], self.apids[1])
 
+        # ---- Max/Min bounding phase ----
         self.max_apids, self.min_apids = deepcopy(self.apids), deepcopy(self.apids)
         max_optimizers = [self.get_optimizer(apid.parameters()) for apid in self.max_apids]
         min_optimizers = [self.get_optimizer(apid.parameters()) for apid in self.min_apids]
-
-        self.ema_q = ExponentialMovingAverage([p for apid in self.max_apids + self.min_apids for p in apid.parameters()],
-                                              decay=self.ema_q_beta)
+        self.ema_q = ExponentialMovingAverage(
+            [p for apid in self.max_apids + self.min_apids for p in apid.parameters()],
+            decay=self.ema_q_beta
+        )
 
         for step in tqdm(range(self.q_epochs + self.curv_epochs)):
-            ys = torch.tensor(next(iter(train_dataloaders[0]))[0]), torch.tensor(next(iter(train_dataloaders[1]))[0])
-            [[optimizer.zero_grad() for optimizer in optimizers] for optimizers in [self.max_apids, self.min_apids]]
+            ys = (
+                next(iter(train_dataloaders[0]))[0].to(self.device),
+                next(iter(train_dataloaders[1]))[0].to(self.device)
+            )
+            [[opt.zero_grad() for opt in opt_list] for opt_list in [max_optimizers, min_optimizers]]
 
-            for task, optimizers, apids in zip(['max', 'min'],
-                                               [max_optimizers, min_optimizers],
-                                               [self.max_apids, self.min_apids]):
+            for task, optimizers, apids in zip(['max', 'min'], [max_optimizers, min_optimizers], [self.max_apids, self.min_apids]):
                 if task_non_inf[task] and step < self.q_epochs:
                     continue
 
                 loss = 0.0
 
-                # Max/Min ECOU(ECOT)
-                # y_f_noisy = (y_f + self.noise_std * torch.randn((self.batch_size, 1)))
-                # f_level_set = apids[t_f].backward(y_f + torch.zeros((self.batch_size, 1)))
-                f_level_set = apids[t_f].backward(y_f, aug_mode='q', n_quantiles=self.n_quantiles)
+                f_level_set = apids[t_f].backward(y_f, aug_mode='q', n_quantiles=self.n_quantiles).to(self.device)
                 if self.cf_only:
                     f_level_set = f_level_set.detach()
                 q = apids[t_cf].forward(f_level_set).mean()
 
                 with torch.no_grad():
                     with self.ema_q.average_parameters():
-                        # f_level_set = apids[t_f].backward(y_f + torch.zeros((4 * self.batch_size, 1)))
-                        f_level_set = apids[t_f].backward(y_f, aug_mode='q', n_quantiles=4 * self.n_quantiles)
+                        f_level_set = apids[t_f].backward(y_f, aug_mode='q', n_quantiles=4 * self.n_quantiles).to(self.device)
                         q_smooth = apids[t_cf].forward(f_level_set).mean()
                     task_non_inf[task] = (q < cf_support[0]) or (q > cf_support[1])
 
@@ -270,43 +281,36 @@ class APID(torch.nn.Module):
                 elif not task_non_inf[task]:
                     loss += self.q_coeff * torch.nn.functional.softplus(q)
 
-                # Fitting distribution
                 for i, (y, apid) in enumerate(zip(ys, apids)):
                     if self.cf_only and i == t_f:
                         continue
-                    # Log-prob losses
+                    y = y.to(self.device)
                     y_noisy = y + self.noise_std * torch.randn_like(y)
-                    log_prob = - apid.log_prob(y_noisy).mean()
-                    # Wasserstein losses
-                    u = self.p_u.sample((self.batch_size,))
+                    log_prob = -apid.log_prob(y_noisy).mean()
+                    u = self.p_u.sample((self.batch_size,)).to(self.device)
                     wd = wasserstein_1d(y, apid.forward(u)).mean()
                     loss += log_prob + wd
 
                     if ((step % 5 == 0) or step == self.q_epochs + self.curv_epochs - 1) and log:
                         self.mlflow_logger.log_metrics({f'train_neg_log_prob{i}_{task}': log_prob.item()},
-                                                       step=step + self.burn_in_epochs)
+                                                    step=step + self.burn_in_epochs)
                         self.mlflow_logger.log_metrics({f'train_wd{i}_{task}': wd.item()}, step=step + self.burn_in_epochs)
 
-                # # Penalizing curvature
                 if self.curv_coeff > 0.0 and (step >= self.q_epochs):
-                    # mean_cf_level_set = apids[t_cf].backward(q.detach() + torch.zeros((self.batch_size, 1)))
-                    mean_cf_level_set = apids[t_cf].backward(q.detach(), aug_mode='q', n_quantiles=self.n_quantiles)
+                    mean_cf_level_set = apids[t_cf].backward(q.detach(), aug_mode='q', n_quantiles=self.n_quantiles).to(self.device)
                     cf_curv = apids[t_cf].max_abs_principal_curvature(mean_cf_level_set).mean()
                     curv_coeff = self.linear_rise(step - self.q_epochs, self.curv_epochs, self.curv_coeff)
                     loss += curv_coeff * cf_curv
                 else:
-                    cf_curv = torch.tensor(0.0)
+                    cf_curv = torch.tensor(0.0, device=self.device)
 
                 loss.backward()
-                [optimizer.step() for optimizer in optimizers]
+                [opt.step() for opt in optimizers]
                 [apid.clear_cache() for apid in apids]
 
                 if step % 5 == 0 and log:
                     self.mlflow_logger.log_metrics({f'cf_curv_{task}': cf_curv.item()}, step=step + self.burn_in_epochs)
                     self.mlflow_logger.log_metrics({f'loss_{task}': loss.item()}, step=step + self.burn_in_epochs)
-
-                # if step % 50 == 0 and log:
-                #     self.plot_level_sets(apids, t_f, t_cf, y_f, [0.0, 1.5, 2.0] if task == 'max' else [-0.0, -1.5, -2.0], task)
 
             self.ema_q.update()
 
