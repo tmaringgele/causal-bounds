@@ -1,3 +1,7 @@
+import argparse
+import sys
+sys.path.append("..")
+
 from simulation_engine.scenarios.iv.continuous_iv import ContinuousIV
 from simulation_engine.algorithms.apid import Apid
 from simulation_engine.algorithms.apid_src.src.models.apid import APID
