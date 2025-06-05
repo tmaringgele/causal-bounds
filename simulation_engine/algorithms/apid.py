@@ -137,6 +137,7 @@ class Apid:
         """
         if device is None:
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            print('using device:', device.type)
         lower_diffs = []
         upper_diffs = []
 
