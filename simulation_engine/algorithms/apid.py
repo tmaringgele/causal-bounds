@@ -130,11 +130,13 @@ class Apid:
         return ate_lb, ate_ub
 
     @staticmethod
-    def get_ATE_bounds_from_model(model, X, Y, alpha=0.05, n_samples=500, device=device):
+    def get_ATE_bounds_from_model(model, X, Y, alpha=0.05, n_samples=500, device=None):
         """
         Compute ATE bounds by aggregating per-unit ECOU bounds.
         Enforces correct bound ordering to avoid inverted intervals.
         """
+        if device is None:
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         lower_diffs = []
         upper_diffs = []
 
