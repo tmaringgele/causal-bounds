@@ -27,12 +27,12 @@ class Apid:
         for idx, sim in data.iterrows():
 
             failed = False
-            try:
-                bound_lower, bound_upper  = Apid.run_from_generate_data(sim, device)
-                print(f"bound_ATE for idx {idx}: {bound_lower}, {bound_upper}")
-            except Exception as e:
-                print(f"Error in ZhangBareinboim: {e}")
-                failed = True
+            # try:
+            bound_lower, bound_upper  = Apid.run_from_generate_data(sim, device)
+            print(f"bound_ATE for idx {idx}: {bound_lower}, {bound_upper}")
+            # except Exception as e:
+            #     print(f"Error in {Apid.ALG_NAME}: {e}")
+            #     failed = True
             #Flatten bounds to trivial ceils
             if failed | (bound_upper > AlgUtil.get_trivial_Ceils(query)[1]):
                 bound_upper = AlgUtil.get_trivial_Ceils(query)[1] 
