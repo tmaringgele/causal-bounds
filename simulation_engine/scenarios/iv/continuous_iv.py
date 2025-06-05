@@ -5,6 +5,9 @@ import pandas as pd
 from simulation_engine.util.datagen_util import datagen_util
 from scipy.stats import norm
 from simulation_engine.algorithms.zhang_bareinboim import ZhangBareinboim
+from linearmodels.iv import IV2SLS
+import warnings
+
 
 
 class ContinuousIV(IVScenario):
@@ -13,6 +16,9 @@ class ContinuousIV(IVScenario):
         "ATE_zhangbareinboim": lambda self: ZhangBareinboim.bound_ATE(self.data),
         "ATE_causaloptim-binned": lambda self: self.run_binaryIV('ATE_causaloptim'),
         "ATE_autobound-binned": lambda self: self.run_binaryIV('ATE_autobound'),
+        "ATE_2SLS-0.99": lambda self: self.bound_ate_2SLS(0.99),
+        "ATE_2SLS-0.98": lambda self: self.bound_ate_2SLS(0.98),
+        "ATE_2SLS-0.95": lambda self: self.bound_ate_2SLS(0.95),
     }
 
     def __init__(self, dag, dataframe_cont, cutoff=0.5):
@@ -66,8 +72,59 @@ class ContinuousIV(IVScenario):
         
         return self.data
 
+    def bound_ate_2SLS(self, ci_level=0.98):
+        """
+        Compute 2SLS bounds for the ATE using the given confidence level.
 
-    
+        Args:
+            ci_level (float): Confidence level for the bounds. Default is 0.98.
+
+        Returns:
+            Void: This method modifies the self.data DataFrame in place.
+        """
+        for idx, sim in self.data.iterrows():
+            df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
+            # Add a constant term for the exogenous variables
+            df['const'] = 1  # Adding a constant column
+
+            # Define the dependent variable (Y), endogenous variable (X), exogenous variable (constant), and instrument (Z)
+            dependent = df['Y']
+            endog = df['X']
+            exog = df[['const']]  # Exogenous variables (constant term)
+            instruments = df['Z']
+
+            failed = False
+            try:
+                with warnings.catch_warnings(record=True) as w:
+                    warnings.simplefilter("always")
+                    # Perform 2SLS regression
+                    model = IV2SLS(dependent, exog, endog, instruments).fit()
+                    CI_upper = model.conf_int(level=ci_level).loc['X']['upper']
+                    if CI_upper > 1:
+                        CI_upper = 1
+
+                    CI_lower = model.conf_int(level=ci_level).loc['X']['lower']
+                    if CI_lower < -1:
+                        CI_lower = -1
+                    # If any warnings were raised, treat as failure
+                    if len(w) > 0:
+                        raise RuntimeError(f"2SLS produced warnings: {[str(warn.message) for warn in w]}")
+            except Exception as e:
+                # print(f"2SLS failed for simulation {idx} with error: {e}")
+                CI_upper = 1
+                CI_lower = -1
+                failed = True
+
+            CI_valid = CI_lower <= sim['ATE_true'] <= CI_upper
+            CI_width = CI_upper - CI_lower
+
+            ci_level_str = f"{ci_level:.2f}"
+            self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_lower'] = CI_lower
+            self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_upper'] = CI_upper
+            self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_valid'] = CI_valid
+            self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_width'] = CI_width
+            self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_failed'] = failed
+
 
 
     

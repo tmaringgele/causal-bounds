@@ -1,3 +1,4 @@
+import warnings
 from simulation_engine.util.alg_util import AlgUtil
 from .base_iv import IVScenario
 from simulation_engine.util.datagen_util import datagen_util
@@ -18,6 +19,7 @@ class BinaryIV(IVScenario):
     AVAILABLE_ALGORITHMS = {
         "ATE_2SLS-0.99": lambda self: self.bound_ate_2SLS(0.99),
         "ATE_2SLS-0.98": lambda self: self.bound_ate_2SLS(0.98),
+        "ATE_2SLS-0.95": lambda self: self.bound_ate_2SLS(0.95),
 
         "ATE_causaloptim": lambda self: Causaloptim.bound("ATE", self.data, 
                        graph_str="(Z -+ X, X -+ Y, Ur -+ X, Ur -+ Y)", 
@@ -202,16 +204,22 @@ class BinaryIV(IVScenario):
 
             failed = False
             try:
-                # Perform 2SLS regression
-                model = IV2SLS(dependent, exog, endog, instruments).fit()
-                CI_upper = model.conf_int(level=ci_level).loc['X']['upper']
-                if CI_upper > 1:
-                    CI_upper = 1
+                with warnings.catch_warnings(record=True) as w:
+                    warnings.simplefilter("always")
+                    # Perform 2SLS regression
+                    model = IV2SLS(dependent, exog, endog, instruments).fit()
+                    CI_upper = model.conf_int(level=ci_level).loc['X']['upper']
+                    if CI_upper > 1:
+                        CI_upper = 1
 
-                CI_lower = model.conf_int(level=ci_level).loc['X']['lower']
-                if CI_lower < -1:
-                    CI_lower = -1
+                    CI_lower = model.conf_int(level=ci_level).loc['X']['lower']
+                    if CI_lower < -1:
+                        CI_lower = -1
+                    # If any warnings were raised, treat as failure
+                    if len(w) > 0:
+                        raise RuntimeError(f"2SLS produced warnings: {[str(warn.message) for warn in w]}")
             except Exception as e:
+                # print(f"2SLS failed for simulation {idx} with error: {e}")
                 CI_upper = 1
                 CI_lower = -1
                 failed = True
@@ -224,8 +232,7 @@ class BinaryIV(IVScenario):
             self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_upper'] = CI_upper
             self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_valid'] = CI_valid
             self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_width'] = CI_width
-            self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_failed'] = failed
-    
+            self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_failed'] = failed    
 
     @staticmethod
     def generate_data_rolling_ate(N_simulations=2000, n=500, seed=None, b_U_X=None, b_U_Y=None, b_Z_X=None, intercept_X=None, intercept_Y=None, p_U=None, p_Z=None, sigma_X=None, sigma_Y=None):
