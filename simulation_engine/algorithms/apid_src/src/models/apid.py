@@ -146,7 +146,11 @@ class APID(torch.nn.Module):
         self.cf_only = args.model.cf_only
         self.ema_q_beta = args.model.ema_q
 
-        self.device = args.exp.device
+        # Set device for model
+        if args.exp.device == "cuda" or args.exp.device == "cuda:0":
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        else:
+            self.device = args.exp.device
         self.to(self.device)
 
         # MlFlow Logger
@@ -369,4 +373,3 @@ if __name__ == '__main__':
     y = p_y.sample((1000, ))
     p1.log_prob(y)
 
-    
