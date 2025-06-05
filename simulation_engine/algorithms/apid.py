@@ -91,6 +91,8 @@ class Apid:
         )
 
         torch.set_default_device(device)
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
         # 3. Initialize model and select a factual input (for ECOU query)
         model = APID(args)
