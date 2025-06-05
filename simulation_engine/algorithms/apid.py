@@ -22,13 +22,13 @@ class Apid:
 
     ALG_NAME = "apid"
 
-    def bound_ATE(data):
+    def bound_ATE(data, device='cpu'):
         query = "ATE"
         for idx, sim in data.iterrows():
 
             failed = False
             try:
-                bound_lower, bound_upper  = Apid.run_from_generate_data(sim)
+                bound_lower, bound_upper  = Apid.run_from_generate_data(sim, device)
                 print(f"bound_ATE for idx {idx}: {bound_lower}, {bound_upper}")
             except Exception as e:
                 print(f"Error in ZhangBareinboim: {e}")
@@ -55,7 +55,7 @@ class Apid:
 
 
 
-    def run_from_generate_data(data):
+    def run_from_generate_data(data, device='cpu'):
         # 1. Get synthetic IV-style data
         Y = data['Y']
         X = data['X']
@@ -87,7 +87,7 @@ class Apid:
                 curv_coeff=0.2  # Enable curvature constraint!
             ),
             dataset=SimpleNamespace(name='synthetic_iv'),
-            exp=SimpleNamespace(device='cpu', logging=False, seed=0, mlflow_uri=None)
+            exp=SimpleNamespace(device=device, logging=False, seed=0, mlflow_uri=None)
         )
 
         # 3. Initialize model and select a factual input (for ECOU query)
