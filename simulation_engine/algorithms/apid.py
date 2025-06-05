@@ -76,15 +76,15 @@ class Apid:
                 n_quantiles=32,
                 eps=0.5,
                 batch_size=32,
-                burn_in_epochs=10,
-                q_epochs=10,
-                curv_epochs=3,
+                burn_in_epochs=100,
+                q_epochs=100,
+                curv_epochs=30,
                 noise_std=0.001,
                 lr=0.01,
                 cf_only=True,
                 ema_q=0.99,
                 q_coeff=0.05,
-                curv_coeff=0.2  # Enable curvature constraint!
+                curv_coeff=0.06  # Enable curvature constraint!
             ),
             dataset=SimpleNamespace(name='synthetic_iv'),
             exp=SimpleNamespace(device=device , logging=False, seed=0, mlflow_uri=None)
