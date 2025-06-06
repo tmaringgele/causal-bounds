@@ -21,7 +21,7 @@ class ZaffalonBounds:
 
 
         row_dicts = [row.to_dict() for _, row in data.iterrows()]
-
+        
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
             func = partial(ZaffalonBounds._run_zaffalon_from_row_dict, query=query)
             results = list(executor.map(func, row_dicts))
@@ -68,6 +68,8 @@ class ZaffalonBounds:
     def run_experiment_binaryIV(query, df):
         # Resolve path to this file
         this_dir = os.path.abspath(os.path.dirname(__file__))
+        
+        
 
         # Resolve jars relative to this file
         jar_zaffalon = os.path.join(this_dir, "zaffalon", "binaryIV", "zaffalon.jar")
@@ -76,7 +78,7 @@ class ZaffalonBounds:
             jpype.startJVM(classpath=[jar_zaffalon, jar_credici])
 
         csv_data = ZaffalonBounds._dataframe_to_csv_string(df)
-        
+
 
         ByteArrayInputStream = jpype.JClass("java.io.ByteArrayInputStream")
         input_bytes = JArray(JByte)(csv_data.encode('utf-8'))
@@ -87,8 +89,10 @@ class ZaffalonBounds:
         BinaryTask = jpype.JClass("binaryIV.BinaryIVTask")
         task = BinaryTask(stream, query)
         result = task.call()
+                
         # result looks like this: '-0.5813,-0.2671'
         # Convert to tuple of floats
+        # print("Zaffalon result:", result)
         result_str = str(result)  # Convert java.lang.String to Python str
         lower, upper = map(float, result_str.strip().split(","))
         return (lower, upper)
@@ -99,4 +103,7 @@ class ZaffalonBounds:
         csv_data = "Z,X,Y\n"
         for z, x, y in zip(df['Z'].values, df['X'].values, df['Y'].values):
             csv_data += f"{z},{x},{y}\n"
+        #write to CSV for testing
+        # with open("test.csv", "w") as f:
+        #     f.write(csv_data)
         return csv_data.strip()

@@ -39,7 +39,8 @@ class ContinuousIV(IVScenario):
             for i in range(len(y_array)):
                 #set to 1 if greater than cutoff, else 0
                 y_array[i] = 1 if y_array[i] > cutoff else 0
-            data.at[idx, 'Y'] = y_array
+            # ensure y_array is int type
+            data.at[idx, 'Y'] = np.array(y_array, dtype=int)
             
         return data  
     
@@ -128,22 +129,16 @@ class ContinuousIV(IVScenario):
 
 
 
-    
-    @staticmethod
-    def run_continuous_iv_simulations(N=2000, n=500, seed=None, allowed_functions=None):
-        results = []
-        for i in range(N):
-            sim_seed = seed + i if seed is not None else None
-            result = ContinuousIV.generate_data(n=n, seed=sim_seed, allowed_functions=allowed_functions)
-            results.append(result)
-        return pd.DataFrame(results)
+
     @staticmethod
     def run_rolling_b_X_Y_simulations(
         b_range=(-5, 5),
         N_points=50,
         replications=20,
         n=500,
-        seed=None):
+        seed=None,
+        allowed_functions=None
+    ):
         """
         Run simulations across a range of b_X_Y values with multiple replications per point,
         returning a DataFrame with all individual simulation results (not aggregated).
@@ -167,7 +162,8 @@ class ContinuousIV(IVScenario):
                 result = ContinuousIV.generate_data(
                     n=n,
                     seed=sim_seed,
-                    b_X_Y=b_X_Y_val
+                    b_X_Y=b_X_Y_val,
+                    allowed_functions=allowed_functions  # <-- pass through
                 )
                 result['b_X_Y'] = b_X_Y_val
                 all_results.append(result)
@@ -187,6 +183,7 @@ class ContinuousIV(IVScenario):
         b_U_Y=None,
         p_Z=None,
         sigma_U=None,
+        allowed_functions=None 
     ):
         if seed is None:
             seed = np.random.randint(0, 1e6)
@@ -228,6 +225,10 @@ class ContinuousIV(IVScenario):
             "bounded_linear": lambda x: np.clip(x / 5, -1, 1),  # linear but bounded
             "rescaled_identity": lambda x: x / (1 + np.abs(x)),  # smooth contraction
         }
+
+        # Restrict G_all if allowed_functions is set
+        if allowed_functions is not None:
+            G_all = {k: v for k, v in G_all.items() if k in allowed_functions}
 
         # Binary instrument and unobserved confounder
         Z = np.random.binomial(1, p_Z, n)
