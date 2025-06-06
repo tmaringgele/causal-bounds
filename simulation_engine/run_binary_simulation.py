@@ -38,7 +38,7 @@ def main(N_simulations, R_path):
 
     binaryIV = BinaryIV('IV Dag', data)
 
-    runtimes = binaryIV.run_all_bounding_algorithms()
+    runtimes = binaryIV.run()
     results = binaryIV.data
 
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
