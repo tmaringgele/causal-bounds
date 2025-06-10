@@ -64,51 +64,67 @@ class PlottingUtil:
         else:
             filtered_algorithms = algorithms
 
-        
-
+        # Work on a copy to avoid modifying the original dataframe
+        df = dataframe.copy()
         stats = []
         for algorithm in filtered_algorithms:
-            if f'{algorithm}_bound_valid' in dataframe.columns:
-                                
+            if f'{algorithm}_bound_valid' in df.columns:
                 query = algorithm.split('_')[0]  # Extract query type from algorithm name
 
-                #make sure all failed or invalid bounds have trivial ceils
-                ## if _bound_failed=True or _bound_valid=False , lower and upper bounds are set to trivial ceils
-                lower_col = f'{algorithm}_bound_lower'
-                upper_col = f'{algorithm}_bound_upper'
-                failed_mask = dataframe[f'{algorithm}_bound_failed'] == True
-                invalid_mask = (dataframe[f'{algorithm}_bound_failed'] == False) & (dataframe[f'{algorithm}_bound_valid'] == False)
-                ## Set trivial ceils: lower=0, upper=1 for failed or invalid bounds
-                dataframe.loc[failed_mask | invalid_mask, lower_col] = AlgUtil.get_trivial_Ceils(query)[0]
-                dataframe.loc[failed_mask | invalid_mask, upper_col] = AlgUtil.get_trivial_Ceils(query)[1]
-                ## recompute the bound width
-                dataframe[f'{algorithm}_bound_width'] = dataframe[upper_col] - dataframe[lower_col]
-
-
-
-                failed_bounds = dataframe[dataframe[f'{algorithm}_bound_failed']].shape[0]
-                without_failed = dataframe[dataframe[f'{algorithm}_bound_failed'] == False]
+                failed_bounds = df[df[f'{algorithm}_bound_failed']].shape[0]
+                without_failed = df[df[f'{algorithm}_bound_failed'] == False]
                 invalid_bounds = without_failed[without_failed[f'{algorithm}_bound_valid'] == False].shape[0]
                 without_failed_and_invalid = without_failed[without_failed[f'{algorithm}_bound_valid'] == True]
-                fail_rate = failed_bounds / len(dataframe) * 100
-                invalid_rate = invalid_bounds / (len(dataframe) - failed_bounds) * 100 if (len(dataframe) - failed_bounds) > 0 else np.nan
-                # compute the bound width from ALL bounds (wether failed/invalid or not)
-                bound_width = dataframe[f'{algorithm}_bound_width'].mean() 
-                # compute the net bound width from only valid bounds
+                fail_rate = failed_bounds / len(df) * 100
+                invalid_rate = invalid_bounds / (len(df) - failed_bounds) * 100 if (len(df) - failed_bounds) > 0 else np.nan
+
+                # --- Compute Avg. Invalid dist. (as % of query range) ---
+                invalid_df = without_failed[without_failed[f'{algorithm}_bound_valid'] == False]
+                lower_col = f'{algorithm}_bound_lower'
+                upper_col = f'{algorithm}_bound_upper'
+                true_col = f'{query}_true'
+                if not invalid_df.empty and true_col in df.columns:
+                    lower = invalid_df[lower_col]
+                    upper = invalid_df[upper_col]
+                    true = invalid_df[true_col]
+                    dist = np.where(true < lower, (lower - true).abs(),
+                                    np.where(true > upper, (true - upper).abs(), 0))
+                    # Determine query range
+                    if query.upper() == "ATE":
+                        query_range = 2.0
+                    elif query.upper() == "PNS":
+                        query_range = 1.0
+                    else:
+                        query_range = 1.0  # Default to 1 if unknown
+                    avg_invalid_dist = np.mean(dist) / query_range if len(dist) > 0 else None
+                else:
+                    avg_invalid_dist = None
+
+                # --- Set trivial ceils on the copy only ---
+                failed_mask = df[f'{algorithm}_bound_failed'] == True
+                invalid_mask = (df[f'{algorithm}_bound_failed'] == False) & (df[f'{algorithm}_bound_valid'] == False)
+                df.loc[failed_mask | invalid_mask, lower_col] = AlgUtil.get_trivial_Ceils(query)[0]
+                df.loc[failed_mask | invalid_mask, upper_col] = AlgUtil.get_trivial_Ceils(query)[1]
+                df[f'{algorithm}_bound_width'] = df[upper_col] - df[lower_col]
+
+                bound_width = df[f'{algorithm}_bound_width'].mean()
                 net_bound_width = without_failed_and_invalid[f'{algorithm}_bound_width'].mean()
+
                 stats.append({
                     'Algorithm': algorithm,
                     'Fail Rate (%)': f"{fail_rate:.2f}",
                     'Invalid Rate (%)': f"{invalid_rate:.2f}",
                     'Net Bound Width': f"{net_bound_width:.4f}" if net_bound_width is not None else "N/A",
-                    'Bound Width': f"{bound_width:.4f}" if bound_width is not None else "N/A"
+                    'Bound Width': f"{bound_width:.4f}" if bound_width is not None else "N/A",
+                    'Invalid Δ (%)': f"{(avg_invalid_dist * 100):.2f}" if avg_invalid_dist is not None else "N/A"
                 })
             else:
                 stats.append({
                     'Algorithm': algorithm,
                     'Fail Rate (%)': "N/A",
                     'Invalid Rate (%)': "N/A",
-                    'Net Bound Width': "N/A"
+                    'Net Bound Width': "N/A",
+                    'Avg. Invalid dist.': "N/A"
                 })
         stats_df = pd.DataFrame(stats)
         # Sort by Net Bound Width (convert to float, "N/A" as NaN)
