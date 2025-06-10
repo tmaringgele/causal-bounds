@@ -14,15 +14,15 @@ class ContinuousIV(IVScenario):
 
     AVAILABLE_ALGORITHMS = {
         "ATE_zhangbareinboim": lambda self: ZhangBareinboim.bound_ATE(self.data),
-        "ATE_causaloptim-binned": lambda self: self.run_binaryIV('ATE_causaloptim'),
-        "ATE_autobound-binned": lambda self: self.run_binaryIV('ATE_autobound'),
-        # "ATE_zaffalonbounds-binned": lambda self: self.run_binaryIV('ATE_zaffalonbounds'),
+        "ATE_causaloptim--binned": lambda self: self.run_binaryIV('ATE_causaloptim'),
+        "ATE_autobound--binned": lambda self: self.run_binaryIV('ATE_autobound'),
+        "ATE_zaffalonbounds--binned": lambda self: self.run_binaryIV('ATE_zaffalonbounds'),
         "ATE_2SLS-0.99": lambda self: self.bound_ate_2SLS(0.99),
         "ATE_2SLS-0.98": lambda self: self.bound_ate_2SLS(0.98),
         "ATE_2SLS-0.95": lambda self: self.bound_ate_2SLS(0.95),
-        "ATE_entropybounds-0.80-binned": lambda self: self.run_binaryIV('ATE_entropybounds-0.80'),
-        "ATE_entropybounds-0.20": lambda self: self.run_binaryIV('ATE_entropybounds-0.20'),
-        "ATE_entropybounds-0.10": lambda self: self.run_binaryIV('ATE_entropybounds-0.10'),
+        "ATE_entropybounds-0.80--binned": lambda self: self.run_binaryIV('ATE_entropybounds-0.80'),
+        "ATE_entropybounds-0.20--binned": lambda self: self.run_binaryIV('ATE_entropybounds-0.20'),
+        "ATE_entropybounds-0.10--binned": lambda self: self.run_binaryIV('ATE_entropybounds-0.10'),
     }
 
     def __init__(self, dag, dataframe_cont, cutoff=0.5):
@@ -306,4 +306,9 @@ class ContinuousIV(IVScenario):
             'X_min': np.min(X),
             'X_mean': np.mean(X),
             'Y_mean': np.mean(Y),
+            'entropy_Z': datagen_util.safe_entropy(Z),
+            'entropy_X': datagen_util.safe_entropy(X),
         }
+    
+    
+   

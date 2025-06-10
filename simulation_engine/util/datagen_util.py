@@ -23,6 +23,12 @@ class datagen_util:
             "probit": lambda x: norm.cdf(x),  # Gaussian CDF
         }
         return squashers
+    
+    @staticmethod
+    def safe_entropy(arr):
+        # Convert float arrays to int64 for entropy calculation
+        arr = np.asarray(arr).astype(np.int64)
+        return datagen_util.entropy_of_array(arr)
 
     @staticmethod
     def entropy_of_array(arr):
