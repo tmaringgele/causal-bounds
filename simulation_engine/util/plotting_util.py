@@ -343,7 +343,7 @@ class PlottingUtil:
     @staticmethod
     def plot_trueEntropyUB_vs_bound_width(dataframe, entropybound_prefix='entropybounds-trueTheta'):
         """
-        Plot the true entropy upper bound against the bound width.
+        Plot the true entropy upper bound against the bound width and fit a regression (bound width ~ theta + log_theta).
 
         Parameters:
         dataframe (pd.DataFrame): The input dataframe containing entropy bounds with true theta.
@@ -360,8 +360,40 @@ class PlottingUtil:
                     color='red', alpha=0.5, label='Invalid Bounds')
         plt.xlabel(r'entropy(U) = θ')
         plt.ylabel('Bound Width')
-        plt.title(r'θ vs Bound Width. True Theta')
+        plt.title(r'θ vs Bound Width. True θ')
         plt.grid(True)
+        plt.legend()
+
+        # --- Regression: bound_width ~ theta + log_theta ---
+        import statsmodels.api as sm
+        import statsmodels.formula.api as smf
+        import numpy as np
+        import pandas as pd
+
+        df_ols = dataframe[
+            (dataframe[f'{entropybound_prefix}_bound_valid']) &
+            (dataframe[f'{entropybound_prefix}_bound_failed'] == False)
+        ].copy()
+        df_ols['theta'] = df_ols[f'{entropybound_prefix}_theta']
+        df_ols['log_theta'] = np.log(df_ols['theta'] + 1e-5)  # avoid log(0)
+        bound_width_col = f'{entropybound_prefix}_bound_width'
+        safe_bound_width_col = 'bound_width_tmp'
+        df_ols[safe_bound_width_col] = df_ols[bound_width_col]
+
+        # Fit regression
+        model = smf.glm(formula=f"{safe_bound_width_col} ~ theta + log_theta",
+                        data=df_ols,
+                        family=sm.families.Binomial(link=sm.families.links.logit()))
+        result = model.fit()
+        print(result.summary())
+
+        # Prediction grid
+        theta_pred = np.linspace(df_ols['theta'].min(), df_ols['theta'].max(), 300)
+        X_pred = pd.DataFrame({'theta': theta_pred, 'log_theta': np.log(theta_pred + 1e-5)})
+        y_pred = result.predict(X_pred)
+
+        # Plot fit
+        plt.plot(theta_pred, y_pred, color='green', linewidth=2, label='Fractional Logit Fit')
         plt.legend()
         plt.show()
         

@@ -61,8 +61,10 @@ class BinaryIV(IVScenario):
         "ATE_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "ATE"),
         "PNS_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "PNS"),
 
-        "ATE_nonpara": lambda self: self.bound_nonpara('ATE'),
-        "PNS_nonpara": lambda self: self.bound_nonpara('PNS'),
+        "ATE_tianpearl": lambda self: self.bound_tianpearl('ATE'),
+        "PNS_tianpearl": lambda self: self.bound_tianpearl('PNS'),
+
+        "ATE_manski": lambda self: self.bound_ATE_manski()
 
     }
 
@@ -70,12 +72,60 @@ class BinaryIV(IVScenario):
         super().__init__(dag)
         self.data = dataframe
 
-
-
-
-    def bound_nonpara(self, query):
+    def bound_ATE_manski(self):
         """
         Compute Manski-style bounds for a given query using only observed treatment (X) and outcome (Y).
+        
+        Supported queries:
+            - 'ATE' : Average Treatment Effect
+            - 'PNS' : Probability of Necessity and Sufficiency
+
+        Args:
+            query (str): One of 'ATE' or 'PNS'
+
+        Returns:
+            Void: Modifies self.data DataFrame in place by adding bound columns.
+        """
+        for idx, sim in self.data.iterrows():
+            X = np.array(sim['X'])
+            Y = np.array(sim['Y'])
+            failed = False
+
+            try:
+                p1 = np.mean(Y[X == 1]) if np.any(X == 1) else 0.0
+                p0 = np.mean(Y[X == 0]) if np.any(X == 0) else 0.0
+
+                lower = p1 - p0 - 1
+                upper = p1 - p0 + 1
+                lower = max(lower, -1)
+                upper = min(upper, 1)
+
+                # Ensure logical ordering
+                lower, upper = min(lower, upper), max(lower, upper)
+
+            except Exception:
+                failed = True
+
+            # Flatten bounds to trivial ceils
+            AlgUtil.flatten_bounds_to_trivial_ceils('ATE', lower, upper, failed)
+
+            # Validity check only makes sense for ATE (if ATE_true is in the data)
+            bounds_valid = lower <= sim['ATE_true'] <= upper
+
+
+            bounds_width = upper - lower
+
+            self.data.at[idx, f'ATE_manski_bound_lower'] = lower
+            self.data.at[idx, f'ATE_manski_bound_upper'] = upper
+            self.data.at[idx, f'ATE_manski_bound_width'] = bounds_width
+            self.data.at[idx, f'ATE_manski_bound_failed'] = failed
+            self.data.at[idx, f'ATE_manski_bound_valid'] = bounds_valid
+        
+
+
+    def bound_tianpearl(self, query):
+        """
+        Compute Tian & Pearl bounds for a given query using only observed treatment (X) and outcome (Y).
         
         Supported queries:
             - 'ATE' : Average Treatment Effect
@@ -99,12 +149,18 @@ class BinaryIV(IVScenario):
                 p0 = np.mean(Y[X == 0]) if np.any(X == 0) else 0.0
 
                 if query == 'ATE':
-                    lower = p1 - p0 - 1
-                    upper = p1 - p0 + 1
-                    lower = max(lower, -1)
-                    upper = min(upper, 1)
+
+                    # Bounds on P(Y=1 | do(X=1)) and do(X=0)
+                    lower_do1 = p1
+                    upper_do1 = 1 - p0
+                    lower_do0 = p0
+                    upper_do0 = 1 - p1
+                    # ATE bounds are differences of those intervals
+                    lower = lower_do1 - upper_do0
+                    upper = upper_do1 - lower_do0
 
                 elif query == 'PNS':
+
                     lower = max(0, p1 - p0)
                     upper = min(p1, 1 - p0)
 
@@ -115,7 +171,7 @@ class BinaryIV(IVScenario):
                 failed = True
 
             # Flatten bounds to trivial ceils
-            AlgUtil.flatten_bounds_to_trivial_ceils(query, lower, upper, failed)
+            lower, upper = AlgUtil.flatten_bounds_to_trivial_ceils(query, lower, upper, failed)
 
             # Validity check only makes sense for ATE (if ATE_true is in the data)
             if query == 'ATE':
@@ -125,11 +181,11 @@ class BinaryIV(IVScenario):
 
             bounds_width = upper - lower
 
-            self.data.at[idx, f'{query}_nonpara_bound_lower'] = lower
-            self.data.at[idx, f'{query}_nonpara_bound_upper'] = upper
-            self.data.at[idx, f'{query}_nonpara_bound_width'] = bounds_width
-            self.data.at[idx, f'{query}_nonpara_bound_failed'] = failed
-            self.data.at[idx, f'{query}_nonpara_bound_valid'] = bounds_valid
+            self.data.at[idx, f'{query}_tianpearl_bound_lower'] = lower
+            self.data.at[idx, f'{query}_tianpearl_bound_upper'] = upper
+            self.data.at[idx, f'{query}_tianpearl_bound_width'] = bounds_width
+            self.data.at[idx, f'{query}_tianpearl_bound_failed'] = failed
+            self.data.at[idx, f'{query}_tianpearl_bound_valid'] = bounds_valid
 
 
 
@@ -298,7 +354,8 @@ class BinaryIV(IVScenario):
         p_U=None,
         p_Z=None,
         sigma_X=None,
-        sigma_Y=None
+        sigma_Y=None,
+        uniform_confounder_entropy=False
     ):
         """
         Simulate binary data for causal analysis using a structural causal model with optional additive noise.
@@ -345,7 +402,9 @@ class BinaryIV(IVScenario):
             intercept_X = 0
         if intercept_Y is None:
             intercept_Y = 0
-        if p_U is None:
+        if uniform_confounder_entropy:
+            p_U = datagen_util._sample_p_with_uniform_entropy()
+        elif p_U is None:
             p_U = np.random.uniform(0, 1)
         if p_Z is None:
             p_Z = np.random.uniform(0, 1)

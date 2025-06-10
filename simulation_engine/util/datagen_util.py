@@ -8,6 +8,7 @@ class datagen_util:
     Utility class for generating data for simulation scenarios.
     """
 
+
     @staticmethod
     def get_squashers():
         """
@@ -24,6 +25,34 @@ class datagen_util:
         }
         return squashers
     
+    @staticmethod
+    def _sample_p_with_uniform_entropy():
+        """
+        Sample a Bernoulli parameter p such that the entropy H(Ber(p)) is uniformly distributed in [0,1].
+
+        Returns
+        -------
+        float : p ∈ [0, 1] with H(Ber(p)) ~ Uniform(0,1)
+        """
+        import scipy.optimize
+
+        def binary_entropy(p):
+            p = np.clip(p, 1e-10, 1 - 1e-10)
+            return -p * np.log2(p) - (1 - p) * np.log2(1 - p)
+
+        def inverse_entropy(h_target):
+            # Find p in [0, 0.5] such that H(p) = h_target
+            f = lambda p: binary_entropy(p) - h_target
+            return scipy.optimize.bisect(f, 1e-6, 0.5 - 1e-6)
+
+        # Step 1: Sample target entropy
+        h = np.random.uniform(0, 1)
+        # Step 2: Find p in [0, 0.5]
+        p = inverse_entropy(h)
+        # Step 3: Reflect with 50% probability
+        return p if np.random.rand() < 0.5 else 1 - p
+
+
     @staticmethod
     def safe_entropy(arr):
         # Convert float arrays to int64 for entropy calculation
