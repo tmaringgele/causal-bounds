@@ -29,7 +29,7 @@ class ContinuousIV(IVScenario):
         super().__init__(dag)
         self.cutoff = cutoff
         self.data = dataframe_cont
-        binned_data = self._bin_data(dataframe_cont)
+        binned_data = self._bin_data(dataframe_cont, cutoff)
         # Create internal binary IV object
         self.binaryIV = BinaryIV(dag, binned_data)
 
@@ -37,14 +37,10 @@ class ContinuousIV(IVScenario):
         data = dataframe_cont.copy()
         # Ensure data['Y'] is a 1D array or Series of scalars before binarization
         for idx, row in data.iterrows():
-            y_array = row['Y']
-            #for each element of y_array
+            y_array = np.array(row['Y'], copy=True)  # Make a copy to avoid modifying original
             for i in range(len(y_array)):
-                #set to 1 if greater than cutoff, else 0
                 y_array[i] = 1 if y_array[i] > cutoff else 0
-            # ensure y_array is int type
-            data.at[idx, 'Y'] = np.array(y_array, dtype=int)
-            
+            data.at[idx, 'Y'] = y_array.astype(int)
         return data  
     
     def run_binaryIV(self, algorithm='ATE_causaloptim'):
@@ -70,7 +66,7 @@ class ContinuousIV(IVScenario):
             if col.startswith(algorithm):
                 #add '-binned-0.5' to the algorithm name
                 col_without_name = col.replace(algorithm, '')
-                new_col_name = f"{algorithm}-binned{col_without_name}"
+                new_col_name = f"{algorithm}--binned{col_without_name}"
                 self.data[new_col_name] = self.binaryIV.data[col]
 
         print("Exiting binned Binary IV Scenario.")
@@ -309,6 +305,5 @@ class ContinuousIV(IVScenario):
             'entropy_Z': datagen_util.safe_entropy(Z),
             'entropy_X': datagen_util.safe_entropy(X),
         }
-    
-    
-   
+
+

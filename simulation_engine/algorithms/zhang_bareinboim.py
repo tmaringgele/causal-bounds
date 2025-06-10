@@ -31,10 +31,12 @@ class ZhangBareinboim:
                 print(f"Error in ZhangBareinboim: {e}")
                 failed = True
             #Flatten bounds to trivial ceils
-            if failed | (bound_upper > AlgUtil.get_trivial_Ceils(query)[1]):
+            if failed:
                 bound_upper = AlgUtil.get_trivial_Ceils(query)[1] 
-            if failed | (bound_lower < AlgUtil.get_trivial_Ceils(query)[0]): 
                 bound_lower = AlgUtil.get_trivial_Ceils(query)[0]
+            
+            bound_lower, bound_upper = AlgUtil.flatten_bounds_to_trivial_ceils(query, bound_lower, bound_upper, failed)
+
 
 
             bounds_valid = bound_lower <= sim[query+'_true'] <= bound_upper
