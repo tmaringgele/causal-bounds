@@ -15,7 +15,7 @@ class EntropyBounds:
 
     """
     
-    def bound(data, theta=0.5, query='ATE', method="cf",  randomize_theta=False):
+    def bound(data, theta=0.5, query='ATE', method="cf",  randomize_theta=False, true_theta=False):
         """
         Compute entropy bounds for the ATE using the given method and entropy constraint.
 
@@ -29,11 +29,14 @@ class EntropyBounds:
         """
         assert method in {'cf', 'cp'}, "Method must be either 'cf' or 'cp'"
         assert query in {'ATE', 'PNS'}, "Query must be either 'ATE' or 'PNS'"
-
+   
         for idx, sim in data.iterrows():
             if randomize_theta:
                 # Randomize theta
                 theta = np.random.uniform(0, 1)
+            elif true_theta:
+                # Use the true theta from the simulation
+                theta = sim['entropy_U']
 
             df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
             failed = False
@@ -55,11 +58,16 @@ class EntropyBounds:
             bounds_width = bound_upper - bound_lower
 
             theta_rounded = f"{theta:.2f}"  # Always show two decimal places, e.g., 0.50
+            if true_theta:
+                theta_rounded = "trueTheta"
+            elif randomize_theta:
+                theta_rounded = "randomTheta"
             data.at[idx, f"{query}_entropybounds-{theta_rounded}_bound_lower"] = bound_lower
             data.at[idx, f"{query}_entropybounds-{theta_rounded}_bound_upper"] = bound_upper
             data.at[idx, f"{query}_entropybounds-{theta_rounded}_bound_valid"] = bounds_valid
             data.at[idx, f"{query}_entropybounds-{theta_rounded}_bound_width"] = bounds_width
             data.at[idx, f"{query}_entropybounds-{theta_rounded}_bound_failed"] = failed
+            data.at[idx, f"{query}_entropybounds-{theta_rounded}_theta"] = theta
 
 
     @staticmethod

@@ -66,10 +66,18 @@ class PlottingUtil:
 
         # Work on a copy to avoid modifying the original dataframe
         df = dataframe.copy()
+        
         stats = []
         for algorithm in filtered_algorithms:
             if f'{algorithm}_bound_valid' in df.columns:
                 query = algorithm.split('_')[0]  # Extract query type from algorithm name
+
+                # Ensure bound_valid is correct
+                # it should be True iff lower <= true <= upper
+                df[f'{algorithm}_bound_valid'] = (df[f'{algorithm}_bound_lower'] <= df[f'{query}_true']) & \
+                                                (df[f'{algorithm}_bound_upper'] >= df[f'{query}_true'])
+                
+                
 
                 failed_bounds = df[df[f'{algorithm}_bound_failed']].shape[0]
                 without_failed = df[df[f'{algorithm}_bound_failed'] == False]
@@ -333,6 +341,32 @@ class PlottingUtil:
         plt.show()
 
     @staticmethod
+    def plot_trueEntropyUB_vs_bound_width(dataframe, entropybound_prefix='entropybounds-trueTheta'):
+        """
+        Plot the true entropy upper bound against the bound width.
+
+        Parameters:
+        dataframe (pd.DataFrame): The input dataframe containing entropy bounds with true theta.
+        entropybound_prefix (str): The prefix for the entropy bounds columns.
+
+        Returns:
+        None
+        """
+        #plot theta on x-axis and bound width on y-axis
+        plt.figure(figsize=(8,6))
+        plt.scatter(dataframe[f'{entropybound_prefix}_theta'], dataframe[f'{entropybound_prefix}_bound_width'], alpha=0.5, label='Valid Bounds')
+        plt.scatter(dataframe[dataframe[f'{entropybound_prefix}_bound_valid'] == False][f'{entropybound_prefix}_theta'],
+                    dataframe[dataframe[f'{entropybound_prefix}_bound_valid'] == False][f'{entropybound_prefix}_bound_width'],
+                    color='red', alpha=0.5, label='Invalid Bounds')
+        plt.xlabel(r'entropy(U) = θ')
+        plt.ylabel('Bound Width')
+        plt.title(r'θ vs Bound Width. True Theta')
+        plt.grid(True)
+        plt.legend()
+        plt.show()
+        
+
+    @staticmethod
     def randomized_entropyUB_vs_bound_width(dataframe, entropybound_prefix='entropybounds'):
         """
         Plot the randomized entropy upper bound against the bound width.
@@ -344,17 +378,27 @@ class PlottingUtil:
         Returns:
         None
         """
-        
+
+
         df_ols = dataframe[
             (dataframe[f'{entropybound_prefix}_bound_valid']) & 
             (dataframe[f'{entropybound_prefix}_bound_failed'] == False)
         ].copy()
 
-        df_ols['theta'] = df_ols[f'{entropybound_prefix}_H(conf)_UB']
+
+
+
+
+        df_ols['theta'] = df_ols[f'{entropybound_prefix}_theta']
         df_ols['log_theta'] = np.log(df_ols['theta'] + 1e-5)  # Add small value to avoid log(0)
 
+        # Fix: patsy/statsmodels does not allow '-' in variable names, so use a temporary column name
+        bound_width_col = f'{entropybound_prefix}_bound_width'
+        safe_bound_width_col = 'bound_width_tmp'
+        df_ols[safe_bound_width_col] = df_ols[bound_width_col]
+
         # Fractional Logit Model with log(theta)
-        model = smf.glm(formula=f"{entropybound_prefix}_bound_width ~ theta + log_theta",
+        model = smf.glm(formula=f"{safe_bound_width_col} ~ theta + log_theta",
                         data=df_ols,
                         family=sm.families.Binomial(link=sm.families.links.logit()))
         result = model.fit()
@@ -374,15 +418,15 @@ class PlottingUtil:
 
         # Scatter plot + fitted curve
         plt.figure(figsize=(8,6))
-        plt.scatter(dataframe[f'{entropybound_prefix}_H(conf)_UB'], dataframe[f'{entropybound_prefix}_bound_width'], alpha=0.5, label='Valid Bounds')
-        plt.scatter(dataframe[dataframe[f'{entropybound_prefix}_bound_valid'] == False][f'{entropybound_prefix}_H(conf)_UB'],
+        plt.scatter(dataframe[f'{entropybound_prefix}_theta'], dataframe[f'{entropybound_prefix}_bound_width'], alpha=0.5, label='Valid Bounds')
+        plt.scatter(dataframe[dataframe[f'{entropybound_prefix}_bound_valid'] == False][f'{entropybound_prefix}_theta'],
                     dataframe[dataframe[f'{entropybound_prefix}_bound_valid'] == False][f'{entropybound_prefix}_bound_width'],
                     color='red', alpha=0.5, label='Invalid Bounds')
         # plt.axvline(actual_entropy, color='blue', linestyle='--', label='Actual Entropy')
         # plt.axvline(0.1, color='purple', linestyle='--', label='θ ∈ {0.05, 0.1}')
         # plt.axvline(0.05, color='purple', linestyle='--')
 
-        # plt.plot(theta_pred, y_pred, color='green', linewidth=2, label='Fractional Logit Fit')
+        plt.plot(theta_pred, y_pred, color='green', linewidth=2, label='Fractional Logit Fit')
         plt.xlabel(r'θ (upper bound for the entropy of U)')
         plt.ylabel('Bound Width')
         plt.title(r'θ vs Bound Width')

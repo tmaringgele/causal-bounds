@@ -52,6 +52,12 @@ class BinaryIV(IVScenario):
         "PNS_entropybounds-0.20": lambda self: EntropyBounds.bound(self.data, 0.20, 'PNS'),
         "PNS_entropybounds-0.10": lambda self: EntropyBounds.bound(self.data, 0.10, 'PNS'),
 
+        "PNS_entropybounds-trueTheta": lambda self: EntropyBounds.bound(self.data, query='PNS', true_theta=True),
+        "ATE_entropybounds-trueTheta": lambda self: EntropyBounds.bound(self.data, query='ATE', true_theta=True),
+        
+        "PNS_entropybounds-randomTheta": lambda self: EntropyBounds.bound(self.data, query='PNS', randomize_theta=True),
+        "ATE_entropybounds-randomTheta": lambda self: EntropyBounds.bound(self.data, query='ATE', randomize_theta=True),
+
         "ATE_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "ATE"),
         "PNS_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "PNS"),
 
@@ -63,7 +69,6 @@ class BinaryIV(IVScenario):
     def __init__(self, dag, dataframe):
         super().__init__(dag)
         self.data = dataframe
-
 
 
 
@@ -280,6 +285,7 @@ class BinaryIV(IVScenario):
             df_results.append(result)
         return pd.DataFrame(df_results)
 
+    @staticmethod
     def _simulate_deterministic_data(
         n=500,
         seed=None,
