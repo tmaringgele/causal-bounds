@@ -45,7 +45,11 @@ class IVScenario(ABC):
         print(f"Total runtime: {total_runtime:.2f} seconds.")
 
         current_timestamp = datetime.now().isoformat()
-        return {"runtimes": runtimes, "timestamp": current_timestamp}
+        return {
+            "runtimes": runtimes,
+            "algorithms": list(runtimes.keys()),
+            "timestamp": current_timestamp
+        }
     
     def get_algorithms(self, query=None):
         """

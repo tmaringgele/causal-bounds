@@ -29,7 +29,7 @@ def main(N_simulations, R_path):
     from simulation_engine.scenarios.iv.binary_iv import BinaryIV
     #install the R causaloptim package
     # install_causaloptim()
-    r('.libPaths(c("/usr/local/lib/R/site-library", .libPaths()))')
+    r('.libPaths(c("'+R_path+'/site-library", .libPaths()))')
 
     print(f"Running simulation with N_simulations = {N_simulations}", flush=True)    
     
