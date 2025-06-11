@@ -41,17 +41,19 @@ class EntropyBounds:
             df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
             failed = False
             
-            # try:
-            bound_lower, bound_upper = EntropyBounds.run_experiment_binaryIV(df, theta, query, method)
+            try:
+                bound_lower, bound_upper = EntropyBounds.run_experiment_binaryIV(df, theta, query, method)
                 
-            # except Exception as e:
-            #     failed = True
+            except Exception as e:
+                failed = True
             
             #Flatten bounds to trivial ceils
-            if failed | (bound_upper > AlgUtil.get_trivial_Ceils(query)[1]):
+            if failed:
                 bound_upper = AlgUtil.get_trivial_Ceils(query)[1] 
-            if failed | (bound_lower < AlgUtil.get_trivial_Ceils(query)[0]): 
+            if failed: 
                 bound_lower = AlgUtil.get_trivial_Ceils(query)[0]
+
+            bound_lower, bound_upper = AlgUtil.flatten_bounds_to_trivial_ceils(query, bound_lower, bound_upper, failed)
 
 
             bounds_valid = bound_lower <= sim[query+'_true'] <= bound_upper
