@@ -6,6 +6,7 @@ from simulation_engine.algorithms.causaloptim import Causaloptim
 from simulation_engine.algorithms.autobound import AutoBound
 from simulation_engine.algorithms.entropybounds import EntropyBounds
 from simulation_engine.algorithms.zaffalonbounds import ZaffalonBounds
+from simulation_engine.algorithms.tianpearl import TianPearl
 from linearmodels.iv import IV2SLS
 import numpy as np
 import pandas as pd
@@ -61,9 +62,9 @@ class BinaryIV(Scenario):
         "ATE_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "ATE"),
         "PNS_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "PNS"),
 
-        "ATE_tianpearl": lambda self: self.bound_tianpearl('ATE'),
-        "PNS_tianpearl": lambda self: self.bound_tianpearl('PNS'),
-
+        "ATE_tianpearl": lambda self: TianPearl.bound(self.data, 'ATE'),
+        "PNS_tianpearl": lambda self: TianPearl.bound(self.data, 'PNS'),
+        
         "ATE_manski": lambda self: self.bound_ATE_manski()
 
     }
@@ -123,120 +124,8 @@ class BinaryIV(Scenario):
         
 
 
-    def bound_tianpearl(self, query):
-        """
-        Compute Tian & Pearl bounds for a given query using only observed treatment (X) and outcome (Y).
-        
-        Supported queries:
-            - 'ATE' : Average Treatment Effect
-            - 'PNS' : Probability of Necessity and Sufficiency
-
-        Args:
-            query (str): One of 'ATE' or 'PNS'
-
-        Returns:
-            Void: Modifies self.data DataFrame in place by adding bound columns.
-        """
-        assert query in {'ATE', 'PNS'}, "Query must be either 'ATE' or 'PNS'"
-
-        for idx, sim in self.data.iterrows():
-            X = np.array(sim['X'])
-            Y = np.array(sim['Y'])
-            failed = False
-
-            try:
-                p1 = np.mean(Y[X == 1]) if np.any(X == 1) else 0.0
-                p0 = np.mean(Y[X == 0]) if np.any(X == 0) else 0.0
-
-                if query == 'ATE':
-
-                    # Bounds on P(Y=1 | do(X=1)) and do(X=0)
-                    lower_do1 = p1
-                    upper_do1 = 1 - p0
-                    lower_do0 = p0
-                    upper_do0 = 1 - p1
-                    # ATE bounds are differences of those intervals
-                    lower = lower_do1 - upper_do0
-                    upper = upper_do1 - lower_do0
-
-                elif query == 'PNS':
-
-                    lower = max(0, p1 - p0)
-                    upper = min(p1, 1 - p0)
-
-                # Ensure logical ordering
-                lower, upper = min(lower, upper), max(lower, upper)
-
-            except Exception:
-                failed = True
-
-            # Flatten bounds to trivial ceils
-            lower, upper = AlgUtil.flatten_bounds_to_trivial_ceils(query, lower, upper, failed)
-
-            # Validity check only makes sense for ATE (if ATE_true is in the data)
-            if query == 'ATE':
-                bounds_valid = lower <= sim['ATE_true'] <= upper
-            else:
-                bounds_valid = lower <= sim['PNS_true'] <= upper
-
-            bounds_width = upper - lower
-
-            self.data.at[idx, f'{query}_tianpearl_bound_lower'] = lower
-            self.data.at[idx, f'{query}_tianpearl_bound_upper'] = upper
-            self.data.at[idx, f'{query}_tianpearl_bound_width'] = bounds_width
-            self.data.at[idx, f'{query}_tianpearl_bound_failed'] = failed
-            self.data.at[idx, f'{query}_tianpearl_bound_valid'] = bounds_valid
 
 
-
-
-    def bound_entropy(self, entr=0.5, query='ATE', method="cf",  randomize_theta=False):
-        """
-        Compute entropy bounds for the ATE using the given method and entropy constraint.
-
-        Args:
-            method (str): Method to use for computing bounds. Options are 'cf' or 'cp'. Default is 'cf'.
-            entr (float): Upper bound on confounder entropy. Default is 0.5.
-            query (str): The query type (e.g., 'ATE' or 'PNS') to compute bounds for.
-
-        Returns:
-            Void: This method modifies the self.data DataFrame in place.
-        """
-        assert method in {'cf', 'cp'}, "Method must be either 'cf' or 'cp'"
-        assert query in {'ATE', 'PNS'}, "Query must be either 'ATE' or 'PNS'"
-
-        for idx, sim in self.data.iterrows():
-            if randomize_theta:
-                # Randomize theta
-                theta = np.random.uniform(0, 1)
-            else:
-                theta = entr
-
-            df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
-            failed = False
-            
-            # try:
-            bound_lower, bound_upper = EntropyBounds.run_experiment_binaryIV(df, theta, query, method)
-                
-            # except Exception as e:
-            #     failed = True
-            
-            #Flatten bounds to trivial ceils
-            if failed | (bound_upper > AlgUtil.get_trivial_Ceils(query)[1]):
-                bound_upper = AlgUtil.get_trivial_Ceils(query)[1] 
-            if failed | (bound_lower < AlgUtil.get_trivial_Ceils(query)[0]): 
-                bound_lower = AlgUtil.get_trivial_Ceils(query)[0]
-
-
-            bounds_valid = bound_lower <= sim[query+'_true'] <= bound_upper
-            bounds_width = bound_upper - bound_lower
-
-            theta_rounded = f"{theta:.2f}"  # Always show two decimal places, e.g., 0.50
-            self.data.at[idx, f"{query}_entropybounds_{theta_rounded}_bound_lower"] = bound_lower
-            self.data.at[idx, f"{query}_entropybounds_{theta_rounded}_bound_upper"] = bound_upper
-            self.data.at[idx, f"{query}_entropybounds_{theta_rounded}_bound_valid"] = bounds_valid
-            self.data.at[idx, f"{query}_entropybounds_{theta_rounded}_bound_width"] = bounds_width
-            self.data.at[idx, f"{query}_entropybounds_{theta_rounded}_bound_failed"] = failed
 
 
 
