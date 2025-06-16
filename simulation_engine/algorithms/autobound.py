@@ -11,7 +11,11 @@ class AutoBound:
     @staticmethod 
     def bound_binaryIV(query, data, dagstring="Z -> X, X -> Y, U -> X, U -> Y", unob="U"):
         for idx, sim in data.iterrows():
-            df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
+            # Dynamically include Z if present
+            if 'Z' in sim:
+                df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
+            else:
+                df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X']})
             failed = False
             try:
                 joint_probs = AutoBound._compute_joint_probabilities_IV(df)
@@ -73,23 +77,22 @@ class AutoBound:
     def _compute_joint_probabilities_IV(df):
         """
         Computes the joint probabilities for each combination of Z, X, and Y in the input DataFrame.
+        If Z is not present, computes joint probabilities for X and Y only.
 
         Parameters:
-            df (pd.DataFrame): Input DataFrame with columns ['X', 'Y', 'Z'].
+            df (pd.DataFrame): Input DataFrame with columns ['X', 'Y'] or ['X', 'Y', 'Z'].
 
         Returns:
-            pd.DataFrame: DataFrame with columns ['Z', 'X', 'Y', 'prob'] representing the joint probabilities.
+            pd.DataFrame: DataFrame with columns ['Z', 'X', 'Y', 'prob'] or ['X', 'Y', 'prob'].
         """
-        # Count occurrences of each combination of Z, X, Y
-        joint_counts = df.groupby(['Z', 'X', 'Y']).size().reset_index(name='count')
-        
-        # Calculate total number of rows in the input DataFrame
-        total_count = len(df)
-        
-        # Compute probabilities
-        joint_counts['prob'] = joint_counts['count'] / total_count
-        
-        # Drop the count column as it's not needed in the output
-        joint_probs = joint_counts.drop(columns=['count'])
-        
+        if 'Z' in df.columns:
+            joint_counts = df.groupby(['Z', 'X', 'Y']).size().reset_index(name='count')
+            total_count = len(df)
+            joint_counts['prob'] = joint_counts['count'] / total_count
+            joint_probs = joint_counts.drop(columns=['count'])
+        else:
+            joint_counts = df.groupby(['X', 'Y']).size().reset_index(name='count')
+            total_count = len(df)
+            joint_counts['prob'] = joint_counts['count'] / total_count
+            joint_probs = joint_counts.drop(columns=['count'])
         return joint_probs
