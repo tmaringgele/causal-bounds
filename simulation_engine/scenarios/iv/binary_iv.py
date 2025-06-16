@@ -424,8 +424,8 @@ class BinaryIV(IVScenario):
         Y = np.random.binomial(1, p_Y)
 
         # Potential outcomes without noise
-        logit_Y1 = intercept_Y + b_X_Y * 1 + b_U_Y * U
-        logit_Y0 = intercept_Y + b_X_Y * 0 + b_U_Y * U
+        logit_Y1 = intercept_Y + b_X_Y * 1 + b_U_Y * U + epsilon_Y
+        logit_Y0 = intercept_Y + b_X_Y * 0 + b_U_Y * U + epsilon_Y
         p_Y1 = squasher_Y(logit_Y1)
         p_Y0 = squasher_Y(logit_Y0)
         ATE_true = np.mean(p_Y1 - p_Y0)
