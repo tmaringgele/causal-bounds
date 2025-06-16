@@ -196,11 +196,11 @@ class ContinuousIV(IVScenario):
         if b_Z_X is None:
             b_Z_X = datagen_util.pick_from_bimodal()
         if b_U_X is None:
-            b_U_X = np.random.normal(0, 1)
+            b_U_X = datagen_util.pick_from_bimodal()
         if b_X_Y is None:
-            b_X_Y = np.random.normal(0, 1)
+            b_X_Y = datagen_util.pick_from_bimodal()
         if b_U_Y is None:
-            b_U_Y = np.random.normal(0, 1)
+            b_U_Y = datagen_util.pick_from_bimodal()
         if p_Z is None:
             p_Z = np.random.uniform(0, 1)
         if sigma_U is None:

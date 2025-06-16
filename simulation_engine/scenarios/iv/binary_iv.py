@@ -399,9 +399,9 @@ class BinaryIV(IVScenario):
         if b_X_Y is None:
             b_X_Y = datagen_util.pick_from_bimodal()
         if intercept_X is None:
-            intercept_X = 0
+            intercept_X = np.random.normal(0, 1)
         if intercept_Y is None:
-            intercept_Y = 0
+            intercept_Y = np.random.normal(0, 1)
         if uniform_confounder_entropy:
             p_U = datagen_util._sample_p_with_uniform_entropy()
         elif p_U is None:
