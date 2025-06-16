@@ -324,7 +324,7 @@ class BinaryIV(IVScenario):
         step_size = (5 - (-5)) / N_simulations
 
         for b_X_Y in np.linspace(b_lower, b_upper, N_simulations):
-            result = BinaryIV._simulate_deterministic_data(
+            result = BinaryIV._generate_data(
                 n=n,
                 seed=seed,
                 b_U_X=b_U_X,
@@ -340,7 +340,7 @@ class BinaryIV(IVScenario):
         return pd.DataFrame(df_results)
 
     @staticmethod
-    def _simulate_deterministic_data(
+    def _generate_data(
         n=500,
         seed=None,
         b_U_X=None,
