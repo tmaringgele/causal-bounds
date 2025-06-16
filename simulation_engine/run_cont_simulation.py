@@ -33,8 +33,7 @@ def main(N_simulations, R_path):
 
     print(f"Running simulation with N_simulations = {N_simulations}", flush=True)    
     
-    data = ContinuousIV.run_rolling_b_X_Y_simulations( 
-        b_range=(-10, 10), N_points=N_simulations, replications=1, n=500)
+    data = ContinuousIV.run_rolling_b_X_Y_simulations(N_points=N_simulations, replications=1, n=500)
     print("Data generation complete", flush=True)
 
     contIV = ContinuousIV('IV Dag', data)
