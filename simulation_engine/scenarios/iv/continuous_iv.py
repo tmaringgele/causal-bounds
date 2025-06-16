@@ -183,6 +183,8 @@ class ContinuousIV(IVScenario):
         p_Z=None,
         sigma_U=None,
         allowed_functions=None 
+        intercept_X=None,
+        intercept_Y=None
     ):
         if seed is None:
             seed = np.random.randint(0, 1e6)
@@ -205,6 +207,10 @@ class ContinuousIV(IVScenario):
             p_Z = np.random.uniform(0, 1)
         if sigma_U is None:
             sigma_U = np.abs(np.random.normal(0, 1))
+        if intercept_X is None:
+            intercept_X = np.random.normal(0, 1)
+        if intercept_Y is None:
+            intercept_Y = np.random.normal(0, 1)
 
         # Cool nonlinear functions
         G_all = {
@@ -236,7 +242,7 @@ class ContinuousIV(IVScenario):
         # Latent treatment score and stochastic binarization
         g_U_X_name = np.random.choice(list(G_all.keys()))
         g_U_X = G_all[g_U_X_name]
-        X_latent = b_Z_X * Z + b_U_X * g_U_X(U) + np.random.normal(0, sigma_X, n)
+        X_latent = intercept_X + b_Z_X * Z + b_U_X * g_U_X(U) + np.random.normal(0, sigma_X, n)
 
         squashers = datagen_util.get_squashers()
         squash_name = np.random.choice(list(squashers.keys()))
@@ -252,7 +258,7 @@ class ContinuousIV(IVScenario):
         g_U_Y_name = np.random.choice(list(G_all.keys()))
         g_U_Y = G_all[g_U_Y_name]
         epsilon_Y = np.random.normal(0, sigma_Y, n)
-        Y_raw = b_X_Y * X + b_U_Y * g_U_Y(U) + epsilon_Y
+        Y_raw = intercept_Y + b_X_Y * X + b_U_Y * g_U_Y(U) + epsilon_Y
 
         # use squasher instead of clip for Y
         squashers = datagen_util.get_squashers()
