@@ -391,9 +391,9 @@ class BinaryIV(IVScenario):
 
         # Coefficient defaults
         if b_U_X is None:
-            b_U_X = np.random.normal(0, 1)
+            b_U_X = datagen_util.pick_from_bimodal()
         if b_U_Y is None:
-            b_U_Y = np.random.normal(0, 1)
+            b_U_Y = datagen_util.pick_from_bimodal()
         if b_Z_X is None:
             b_Z_X = datagen_util.pick_from_bimodal()
         if b_X_Y is None:
