@@ -7,6 +7,7 @@ from simulation_engine.algorithms.autobound import AutoBound
 from simulation_engine.algorithms.entropybounds import EntropyBounds
 from simulation_engine.algorithms.zaffalonbounds import ZaffalonBounds
 from simulation_engine.algorithms.tianpearl import TianPearl
+from simulation_engine.algorithms.manski import Manski
 from linearmodels.iv import IV2SLS
 import numpy as np
 import pandas as pd
@@ -64,8 +65,8 @@ class BinaryIV(Scenario):
 
         "ATE_tianpearl": lambda self: TianPearl.bound(self.data, 'ATE'),
         "PNS_tianpearl": lambda self: TianPearl.bound(self.data, 'PNS'),
-        
-        "ATE_manski": lambda self: self.bound_ATE_manski()
+
+        "ATE_manski": lambda self: Manski.bound_ATE(self.data)
 
     }
 
@@ -73,63 +74,6 @@ class BinaryIV(Scenario):
         super().__init__(dag)
         self.data = dataframe
 
-    def bound_ATE_manski(self):
-        """
-        Compute Manski-style bounds for a given query using only observed treatment (X) and outcome (Y).
-        
-        Supported queries:
-            - 'ATE' : Average Treatment Effect
-            - 'PNS' : Probability of Necessity and Sufficiency
-
-        Args:
-            query (str): One of 'ATE' or 'PNS'
-
-        Returns:
-            Void: Modifies self.data DataFrame in place by adding bound columns.
-        """
-        for idx, sim in self.data.iterrows():
-            X = np.array(sim['X'])
-            Y = np.array(sim['Y'])
-            failed = False
-
-            try:
-                p1 = np.mean(Y[X == 1]) if np.any(X == 1) else 0.0
-                p0 = np.mean(Y[X == 0]) if np.any(X == 0) else 0.0
-
-                lower = p1 - p0 - 1
-                upper = p1 - p0 + 1
-                lower = max(lower, -1)
-                upper = min(upper, 1)
-
-                # Ensure logical ordering
-                lower, upper = min(lower, upper), max(lower, upper)
-
-            except Exception:
-                failed = True
-
-            # Flatten bounds to trivial ceils
-            AlgUtil.flatten_bounds_to_trivial_ceils('ATE', lower, upper, failed)
-
-            # Validity check only makes sense for ATE (if ATE_true is in the data)
-            bounds_valid = lower <= sim['ATE_true'] <= upper
-
-
-            bounds_width = upper - lower
-
-            self.data.at[idx, f'ATE_manski_bound_lower'] = lower
-            self.data.at[idx, f'ATE_manski_bound_upper'] = upper
-            self.data.at[idx, f'ATE_manski_bound_width'] = bounds_width
-            self.data.at[idx, f'ATE_manski_bound_failed'] = failed
-            self.data.at[idx, f'ATE_manski_bound_valid'] = bounds_valid
-        
-
-
-
-
-
-
-
-        
 
     def bound_ate_2SLS(self, ci_level=0.98):
         """
