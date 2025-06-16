@@ -182,7 +182,7 @@ class ContinuousIV(IVScenario):
         b_U_Y=None,
         p_Z=None,
         sigma_U=None,
-        allowed_functions=None 
+        allowed_functions=None,
         intercept_X=None,
         intercept_Y=None
     ):
@@ -190,7 +190,7 @@ class ContinuousIV(IVScenario):
             seed = np.random.randint(0, 1e6)
         np.random.seed(seed)
 
-        # Structural coefficients
+        # Structural parameters
         if sigma_X is None:
             sigma_X = np.abs(np.random.normal(0, 1))
         if sigma_Y is None:
@@ -212,37 +212,37 @@ class ContinuousIV(IVScenario):
         if intercept_Y is None:
             intercept_Y = np.random.normal(0, 1)
 
-        # Cool nonlinear functions
+        # Nonlinear functions
         G_all = {
             "identity": lambda x: x,
             "sin": np.sin,
             "cos": np.cos,
             "tanh": np.tanh,
-            "log1p_abs": lambda x: np.log1p(np.abs(x)),  # Positives only — tends high
-            "exp_neg_sq": lambda x: np.exp(-x**2),       # Always (0,1), peaked at 0 — good
+            "log1p_abs": lambda x: np.log1p(np.abs(x)),
+            "exp_neg_sq": lambda x: np.exp(-x**2),
             "sigmoid": lambda x: 1 / (1 + np.exp(-x)),
             "exp_clipped": lambda x: np.exp(np.clip(x, -5, 5)),
-
-            # New additions to center things:
-            "zero_centered_tanh": lambda x: np.tanh(x),  # symmetric, maps to (-1, 1)
-            "sigmoid_shifted": lambda x: 1 / (1 + np.exp(-(x - np.mean(x)))),  # normalized input
-            "sine_sym": lambda x: np.sin(x * np.pi),  # ensures output is in [-1, 1] periodically
-            "bounded_linear": lambda x: np.clip(x / 5, -1, 1),  # linear but bounded
-            "rescaled_identity": lambda x: x / (1 + np.abs(x)),  # smooth contraction
+            "zero_centered_tanh": lambda x: np.tanh(x),
+            "sigmoid_shifted": lambda x: 1 / (1 + np.exp(-(x - np.mean(x)))),
+            "sine_sym": lambda x: np.sin(x * np.pi),
+            "bounded_linear": lambda x: np.clip(x / 5, -1, 1),
+            "rescaled_identity": lambda x: x / (1 + np.abs(x)),
         }
 
-        # Restrict G_all if allowed_functions is set
         if allowed_functions is not None:
             G_all = {k: v for k, v in G_all.items() if k in allowed_functions}
 
-        # Binary instrument and unobserved confounder
+        # Exogenous variables
         Z = np.random.binomial(1, p_Z, n)
-        U = np.random.normal(0, sigma_U, n)
+        U = np.random.normal(0, sigma_U, n)  # Homoskedastic U for now
 
-        # Latent treatment score and stochastic binarization
+        # Heteroskedastic noise for X: σ_i ∼ |N(0, σ_X)|
+        sigma_X_vec = np.abs(np.random.normal(0, sigma_X, size=n))
+        epsilon_X = np.random.normal(0, sigma_X_vec)
+
         g_U_X_name = np.random.choice(list(G_all.keys()))
         g_U_X = G_all[g_U_X_name]
-        X_latent = intercept_X + b_Z_X * Z + b_U_X * g_U_X(U) + np.random.normal(0, sigma_X, n)
+        X_latent = intercept_X + b_Z_X * Z + b_U_X * g_U_X(U) + epsilon_X
 
         squashers = datagen_util.get_squashers()
         squash_name = np.random.choice(list(squashers.keys()))
@@ -250,30 +250,29 @@ class ContinuousIV(IVScenario):
         p_X = squasher(X_latent)
         X = np.random.binomial(1, p_X)
 
+        # Heteroskedastic noise for Y: σ_i ∼ |N(0, σ_Y)|
+        sigma_Y_vec = np.abs(np.random.normal(0, sigma_Y, size=n))
+        epsilon_Y = np.random.normal(0, sigma_Y_vec)
 
         g_Y_name = np.random.choice(list(G_all.keys()))
         g_Y = G_all[g_Y_name]
-
-        # Outcome Y
         g_U_Y_name = np.random.choice(list(G_all.keys()))
         g_U_Y = G_all[g_U_Y_name]
-        epsilon_Y = np.random.normal(0, sigma_Y, n)
+
         Y_raw = intercept_Y + b_X_Y * X + b_U_Y * g_U_Y(U) + epsilon_Y
 
-        # use squasher instead of clip for Y
-        squashers = datagen_util.get_squashers()
+        # Squash and clip Y
         squash_Y_name = np.random.choice(list(squashers.keys()))
         squasher_Y = squashers[squash_Y_name]
-
         Y = squasher_Y(g_Y(Y_raw))
         Y = np.clip(Y, 0, 1)
 
-        # Counterfactual outcomes
+        # Counterfactual outcomes using the *same noise* (factual counterfactual pair assumption)
         Y1_raw = b_X_Y * 1 + b_U_Y * g_U_Y(U) + epsilon_Y
         Y0_raw = b_X_Y * 0 + b_U_Y * g_U_Y(U) + epsilon_Y
         Y1 = squasher_Y(g_Y(Y1_raw))
-        Y1 = np.clip(Y1, 0, 1)
         Y0 = squasher_Y(g_Y(Y0_raw))
+        Y1 = np.clip(Y1, 0, 1)
         Y0 = np.clip(Y0, 0, 1)
 
         ATE_true = np.mean(Y1 - Y0)
@@ -289,11 +288,13 @@ class ContinuousIV(IVScenario):
             'sigma_X': sigma_X,
             'sigma_Y': sigma_Y,
             'sigma_U': sigma_U,
+            'intercept_X': intercept_X,
+            'intercept_Y': intercept_Y,
             'g_U_X': g_U_X_name,
             'g_U_Y': g_U_Y_name,
+            'g_Y': g_Y_name,
             'squash_X': squash_name,
             'squash_Y': squash_Y_name,
-            'g_Y': g_Y_name,
             'ATE_true': ATE_true,
             'PNS_true': PNS_true,
             'p_Y1_mean': np.mean(Y1),
@@ -302,6 +303,10 @@ class ContinuousIV(IVScenario):
             'U': U,
             'X': X,
             'Y': Y,
+            'epsilon_X': epsilon_X,
+            'epsilon_Y': epsilon_Y,
+            'sigma_X_vec': sigma_X_vec,
+            'sigma_Y_vec': sigma_Y_vec,
             'Y_max': np.max(Y),
             'Y_min': np.min(Y),
             'X_max': np.max(X),
