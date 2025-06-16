@@ -96,8 +96,8 @@ class PlottingUtil:
                 
                 
 
-                failed_bounds = df[df[f'{algorithm}_bound_failed']].shape[0]
-                without_failed = df[df[f'{algorithm}_bound_failed'] == False]
+                failed_bounds = df[df[f'{algorithm}_bound_failed'].fillna(False)].shape[0]
+                without_failed = df[df[f'{algorithm}_bound_failed'].fillna(False) == False]
                 invalid_bounds = without_failed[without_failed[f'{algorithm}_bound_valid'] == False].shape[0]
                 without_failed_and_invalid = without_failed[without_failed[f'{algorithm}_bound_valid'] == True]
                 fail_rate = failed_bounds / len(df) * 100
