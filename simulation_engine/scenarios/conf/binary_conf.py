@@ -1,5 +1,3 @@
-
-
 import numpy as np
 import pandas as pd
 from simulation_engine.algorithms.autobound import AutoBound
@@ -21,9 +19,9 @@ class BinaryConf(Scenario):
         self.data = dataframe
 
     AVAILABLE_ALGORITHMS = {
-        # "ATE_2SLS-0.99": lambda self: self.bound_ate_2SLS(0.99),
-        # "ATE_2SLS-0.98": lambda self: self.bound_ate_2SLS(0.98),
-        # "ATE_2SLS-0.95": lambda self: self.bound_ate_2SLS(0.95),
+        "ATE_OLS-0.99": lambda self: self.bound_ate_OLS(0.99),
+        "ATE_OLS-0.98": lambda self: self.bound_ate_OLS(0.98),
+        "ATE_OLS-0.95": lambda self: self.bound_ate_OLS(0.95),
 
         "ATE_causaloptim": lambda self: Causaloptim.bound("ATE", self.data, 
                        graph_str="(X -+ Y, Ur -+ X, Ur -+ Y)", 
@@ -72,7 +70,61 @@ class BinaryConf(Scenario):
 
     }
 
+    def bound_ate_OLS(self, ci_level=0.98):
+        """
+        Compute OLS bounds for the ATE using the given confidence level.
 
+        Args:
+            ci_level (float): Confidence level for the bounds. Default is 0.98.
+
+        Returns:
+            Void: This method modifies the self.data DataFrame in place.
+        """
+        for idx, sim in self.data.iterrows():
+            df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X']})
+            # Add a constant term for the exogenous variables
+            df['const'] = 1  # Adding a constant column
+
+            # Define the dependent variable (Y), endogenous variable (X), exogenous variable (constant), and instrument (Z)
+            dependent = df['Y']
+            endog = df['X']
+            exog = df[['const']]  # Exogenous variables (constant term)
+
+            failed = False
+            try:
+                import statsmodels.api as sm
+                import statsmodels.stats.api as sms
+                import warnings
+                with warnings.catch_warnings(record=True) as w:
+                    warnings.simplefilter("always")
+                    # Perform OLS regression
+                    model = sm.OLS(dependent, exog.join(endog)).fit(cov_type='HC3')  # HC3 is robust to heteroskedasticity
+                    # Get confidence interval for X coefficient
+                    CI = model.conf_int(alpha=1-ci_level).loc['X']
+                    CI_lower = CI[0]
+                    CI_upper = CI[1]
+                    if CI_upper > 1:
+                        CI_upper = 1
+                    if CI_lower < -1:
+                        CI_lower = -1
+                    # If any warnings were raised, treat as failure
+                    if len(w) > 0:
+                        raise RuntimeError(f"OLS produced warnings: {[str(warn.message) for warn in w]}")
+            except Exception as e:
+                # print(f"OLS failed for simulation {idx} with error: {e}")
+                CI_upper = 1
+                CI_lower = -1
+                failed = True
+
+            CI_valid = CI_lower <= sim['ATE_true'] <= CI_upper
+            CI_width = CI_upper - CI_lower
+
+            ci_level_str = f"{ci_level:.2f}"
+            self.data.at[idx, 'ATE_OLS-' + ci_level_str + '_bound_lower'] = CI_lower
+            self.data.at[idx, 'ATE_OLS-' + ci_level_str + '_bound_upper'] = CI_upper
+            self.data.at[idx, 'ATE_OLS-' + ci_level_str + '_bound_valid'] = CI_valid
+            self.data.at[idx, 'ATE_OLS-' + ci_level_str + '_bound_width'] = CI_width
+            self.data.at[idx, 'ATE_OLS-' + ci_level_str + '_bound_failed'] = failed
 
    
 
