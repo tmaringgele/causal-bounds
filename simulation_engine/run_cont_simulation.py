@@ -43,7 +43,7 @@ def main(N_simulations, R_path):
     results = contIV.data
 
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    pd.DataFrame(runtimes).to_csv(f'runtimes_{timestamp}.csv', index=False)
+    pd.DataFrame([runtimes['runtimes']]).to_csv(f'runtimes_{timestamp}.csv', index=False)
     results.to_pickle(f'results_{timestamp}.pkl')
 
 if __name__ == "__main__":

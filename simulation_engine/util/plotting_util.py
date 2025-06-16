@@ -12,6 +12,23 @@ class PlottingUtil:
     """
 
     @staticmethod
+    def extract_algorithm_names(dataframe, query):
+        """
+        Extract algorihtm names for the given query type (ATE or PNS) from the dataframe.
+
+        Parameters:
+        dataframe (pd.DataFrame): The input dataframe containing bound information.
+        query (str): The query type ('ATE' or 'PNS').
+
+        Returns:
+        list: A list of column names related to bounds for the specified query.
+        """
+        bw_col = [col for col in dataframe.columns if col.startswith(f'{query}_') and col.endswith('_bound_width')]
+        # remove the '_bound_width' suffix to get algorithm names
+        algorithms = [col.replace('_bound_width', '') for col in bw_col]
+        return algorithms
+
+    @staticmethod
     def print_bound_statistics(dataframe, algorithms=['autobound', 'causaloptim'], query=None):
         """
         Print statistics of the bounds for the given algorithms.
