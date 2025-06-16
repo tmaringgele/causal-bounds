@@ -87,29 +87,28 @@ class BinaryIV(Scenario):
         """
         for idx, sim in self.data.iterrows():
             df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
-            # Add a constant term for the exogenous variables
             df['const'] = 1  # Adding a constant column
 
-            # Define the dependent variable (Y), endogenous variable (X), exogenous variable (constant), and instrument (Z)
             dependent = df['Y']
             endog = df['X']
-            exog = df[['const']]  # Exogenous variables (constant term)
+            exog = df[['const']]
             instruments = df['Z']
 
             failed = False
             try:
+                import warnings
                 with warnings.catch_warnings(record=True) as w:
                     warnings.simplefilter("always")
-                    # Perform 2SLS regression
-                    model = IV2SLS(dependent, exog, endog, instruments).fit()
-                    CI_upper = model.conf_int(level=ci_level).loc['X']['upper']
+                    # Perform 2SLS regression with robust (heteroskedasticity-consistent) standard errors
+                    model = IV2SLS(dependent, exog, endog, instruments).fit(cov_type='robust')
+                    # Compute confidence interval for X coefficient
+                    CI = model.conf_int(level=ci_level).loc['X']
+                    CI_lower = CI.iloc[0]
+                    CI_upper = CI.iloc[1]
                     if CI_upper > 1:
                         CI_upper = 1
-
-                    CI_lower = model.conf_int(level=ci_level).loc['X']['lower']
                     if CI_lower < -1:
                         CI_lower = -1
-                    # If any warnings were raised, treat as failure
                     if len(w) > 0:
                         raise RuntimeError(f"2SLS produced warnings: {[str(warn.message) for warn in w]}")
             except Exception as e:
@@ -294,5 +293,5 @@ class BinaryIV(Scenario):
             'heteroskedasticity_structure': 'sigma_i ~ |N(0,1)| for each unit'
         }
 
-        
+
 
