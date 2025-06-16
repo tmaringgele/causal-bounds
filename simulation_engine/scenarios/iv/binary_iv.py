@@ -1,6 +1,6 @@
 import warnings
 from simulation_engine.util.alg_util import AlgUtil
-from .base_iv import IVScenario
+from ..scenario import Scenario
 from simulation_engine.util.datagen_util import datagen_util
 from simulation_engine.algorithms.causaloptim import Causaloptim
 from simulation_engine.algorithms.autobound import AutoBound
@@ -15,7 +15,7 @@ import time
 from datetime import datetime
 
 
-class BinaryIV(IVScenario):
+class BinaryIV(Scenario):
     AVAILABLE_ALGORITHMS = {
         "ATE_2SLS-0.99": lambda self: self.bound_ate_2SLS(0.99),
         "ATE_2SLS-0.98": lambda self: self.bound_ate_2SLS(0.98),
@@ -311,8 +311,7 @@ class BinaryIV(IVScenario):
             intercept_Y (float): Intercept for the logistic model of Y. Default is 0.
             p_U (float): Probability of unobserved confounder U ~ Bernoulli(p_U). Default is drawn from Uniform(0, 1).
             p_Z (float): Probability of instrument Z ~ Bernoulli(p_Z). Default is drawn from Uniform(0, 1).
-            sigma_X (float or None): Std. dev. of noise added to the X logit. If None, sampled from |N(0,1)|. If 0, no noise.
-            sigma_Y (float or None): Std. dev. of noise added to the Y logit. Same behavior as sigma_X.
+
 
         Returns:
             dict: A dictionary containing the generated data and parameters.

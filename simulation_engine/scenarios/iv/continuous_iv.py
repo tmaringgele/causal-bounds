@@ -1,4 +1,4 @@
-from .base_iv import IVScenario
+from ..scenario import Scenario
 from .binary_iv import BinaryIV
 import numpy as np
 import pandas as pd
@@ -10,7 +10,7 @@ import warnings
 
 
 
-class ContinuousIV(IVScenario):
+class ContinuousIV(Scenario):
 
     AVAILABLE_ALGORITHMS = {
         "ATE_zhangbareinboim": lambda self: ZhangBareinboim.bound_ATE(self.data),
