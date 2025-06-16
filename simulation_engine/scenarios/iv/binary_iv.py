@@ -296,7 +296,7 @@ class BinaryIV(IVScenario):
             self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_failed'] = failed    
 
     @staticmethod
-    def generate_data_rolling_ate(N_simulations=2000, n=500, b_lower=-5, b_upper=5, seed=None, b_U_X=None, b_U_Y=None, b_Z_X=None, intercept_X=None, intercept_Y=None, p_U=None, p_Z=None, sigma_X=None, sigma_Y=None):
+    def generate_data_rolling_ate(N_simulations=2000, n=500, b_lower=-5, b_upper=5, seed=None, b_U_X=None, b_U_Y=None, b_Z_X=None, intercept_X=None, intercept_Y=None, p_U=None, p_Z=None):
         """
         Generate data for a binary instrumental variable scenario.
 
@@ -334,9 +334,7 @@ class BinaryIV(IVScenario):
                 intercept_X=intercept_X,
                 intercept_Y=intercept_Y,
                 p_U=p_U,
-                p_Z=p_Z,
-                sigma_X=sigma_X,
-                sigma_Y=sigma_Y
+                p_Z=p_Z
             )
             df_results.append(result)
         return pd.DataFrame(df_results)
@@ -353,43 +351,42 @@ class BinaryIV(IVScenario):
         intercept_Y=None,
         p_U=None,
         p_Z=None,
-        sigma_X=None,
-        sigma_Y=None,
         uniform_confounder_entropy=False
     ):
         """
-        Simulate binary data for causal analysis using a structural causal model with optional additive noise.
-        Independent squashing functions are chosen for X and Y generation.
+        Simulate binary data using a structural causal model (SCM) with additive, heteroskedastic noise.
+
+        Each simulation draws a sample of size `n`. Binary exogenous variables U and Z influence
+        treatment X and outcome Y through logistic models with heteroskedastic Gaussian noise.
+        Each observation has its own standard deviation for noise, drawn from |N(0,1)|.
+        Independent squashing functions (e.g., sigmoid, tanh) are randomly selected for X and Y.
 
         Args:
-            n (int): Number of samples to generate. Default is 500.
-            seed (int, optional): Random seed for reproducibility. Default is None.
-            b_U_X (float): Coefficient for the effect of U on X. Default is drawn from N(0, 1).
-            b_U_Y (float): Coefficient for the effect of U on Y. Default is drawn from N(0, 1).
-            b_Z_X (float): Coefficient for the effect of Z on X. Default is drawn from a bimodal distribution.
-            b_X_Y (float): Coefficient for the effect of X on Y. Default is drawn from a bimodal distribution.
-            intercept_X (float): Intercept for the logistic model of X. Default is 0.
-            intercept_Y (float): Intercept for the logistic model of Y. Default is 0.
-            p_U (float): Probability for U ~ Bernoulli(p_U). Default is drawn from Uniform(0, 1).
-            p_Z (float): Probability for Z ~ Bernoulli(p_Z). Default is drawn from Uniform(0, 1).
-            sigma_X (float or None): Std. dev. of noise added to the X logit. If None, sampled from |N(0,1)|. If 0, no noise.
-            sigma_Y (float or None): Std. dev. of noise added to the Y logit. Same behavior as sigma_X.
+            n (int): Number of observations to generate. Default is 500.
+            seed (int, optional): Random seed for reproducibility.
+            b_U_X, b_U_Y, b_Z_X, b_X_Y (float): Coefficients in the structural equations. 
+                                                If None, sampled from a bimodal distribution.
+            intercept_X, intercept_Y (float): Intercepts in the logistic models. If None, drawn from N(0,1).
+            p_U, p_Z (float): Probabilities for binary exogenous variables U and Z. 
+                            If None, drawn from Uniform(0,1).
+            uniform_confounder_entropy (bool): If True, samples `p_U` to induce uniform entropy in U.
 
         Returns:
-            dict: Dictionary with all simulated data, model parameters, true ATE and PNS, and entropy values.
+            dict: Contains simulated variables (Z, U, X, Y), true ATE and PNS, parameters used, 
+                entropies, heteroskedastic noise vectors, and metadata.
         """
         if seed is None:
             seed = np.random.randint(0, int(1e6))
         np.random.seed(seed)
 
-        # Randomly choose separate squashing functions for X and Y
+        # Random squashing functions for X and Y
         squashers = datagen_util.get_squashers()
         squasher_X_name = np.random.choice(list(squashers.keys()))
         squasher_Y_name = np.random.choice(list(squashers.keys()))
         squasher_X = squashers[squasher_X_name]
         squasher_Y = squashers[squasher_Y_name]
 
-        # Coefficient defaults
+        # Structural parameters
         if b_U_X is None:
             b_U_X = datagen_util.pick_from_bimodal()
         if b_U_Y is None:
@@ -409,24 +406,19 @@ class BinaryIV(IVScenario):
         if p_Z is None:
             p_Z = np.random.uniform(0, 1)
 
-        # Noise level logic
-        if sigma_X is None:
-            sigma_X = abs(np.random.normal(0, 1))
-        if sigma_Y is None:
-            sigma_Y = abs(np.random.normal(0, 1))
-
-        # Binary exogenous variables
+        # Exogenous binary variables
         Z = np.random.binomial(1, p_Z, size=n)
         U = np.random.binomial(1, p_U, size=n)
 
-        # Add noise to treatment assignment
-        epsilon_X = np.zeros(n) if sigma_X == 0 else np.random.normal(0, sigma_X, size=n)
+        # Heteroskedastic noise: sigma_i ~ |N(0,1)| for each observation
+        sigma_X_vec = np.abs(np.random.normal(0, 1, size=n))
+        epsilon_X = np.random.normal(0, sigma_X_vec)
         logit_X = intercept_X + b_Z_X * Z + b_U_X * U + epsilon_X
         p_X = squasher_X(logit_X)
         X = np.random.binomial(1, p_X)
 
-        # Add noise to outcome assignment
-        epsilon_Y = np.zeros(n) if sigma_Y == 0 else np.random.normal(0, sigma_Y, size=n)
+        sigma_Y_vec = np.abs(np.random.normal(0, 1, size=n))
+        epsilon_Y = np.random.normal(0, sigma_Y_vec)
         logit_Y = intercept_Y + b_X_Y * X + b_U_Y * U + epsilon_Y
         p_Y = squasher_Y(logit_Y)
         Y = np.random.binomial(1, p_Y)
@@ -457,16 +449,20 @@ class BinaryIV(IVScenario):
             'U': U,
             'X': X,
             'Y': Y,
+            'epsilon_X': epsilon_X,
+            'sigma_X_vec': sigma_X_vec,
+            'epsilon_Y': epsilon_Y,
+            'sigma_Y_vec': sigma_Y_vec,
             'entropy_Z': datagen_util.entropy_of_array(Z),
             'entropy_U': datagen_util.entropy_of_array(U),
             'entropy_X': datagen_util.entropy_of_array(X),
             'entropy_Y': datagen_util.entropy_of_array(Y),
-            'sigma_X': sigma_X,
-            'sigma_Y': sigma_Y,
             'squasher_X_name': squasher_X_name,
-            'squasher_Y_name': squasher_Y_name
+            'squasher_Y_name': squasher_Y_name,
+            'heteroskedasticity_structure': 'sigma_i ~ |N(0,1)| for each unit'
         }
-    
+
+        
     # Convert float arrays to int64 for entropy calculation
     def safe_entropy(arr):
         arr = np.asarray(arr).astype(np.int64)
