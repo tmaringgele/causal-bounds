@@ -2,14 +2,76 @@
 
 import numpy as np
 import pandas as pd
+from simulation_engine.algorithms.autobound import AutoBound
+from simulation_engine.algorithms.causaloptim import Causaloptim
+from simulation_engine.scenarios.scenario import Scenario
 from simulation_engine.util.datagen_util import datagen_util
 
 
-class BinaryConf:
+class BinaryConf(Scenario):
     """
     Binary Confounder Scenario
     """
 
+    def __init__(self, dag, dataframe):
+        super().__init__(dag)
+        self.data = dataframe
+
+    AVAILABLE_ALGORITHMS = {
+        # "ATE_2SLS-0.99": lambda self: self.bound_ate_2SLS(0.99),
+        # "ATE_2SLS-0.98": lambda self: self.bound_ate_2SLS(0.98),
+        # "ATE_2SLS-0.95": lambda self: self.bound_ate_2SLS(0.95),
+
+        "ATE_causaloptim": lambda self: Causaloptim.bound("ATE", self.data, 
+                       graph_str="(X -+ Y, Ur -+ X, Ur -+ Y)", 
+                       leftside=[0, 0, 0], 
+                       latent=[0, 0, 1], 
+                       nvals=[2, 2, 2], 
+                       rlconnect=[0, 0, 0], 
+                       monotone=[0, 0, 0]),
+        "PNS_causaloptim": lambda self: Causaloptim.bound("PNS", self.data,
+                       graph_str="(X -+ Y, Ur -+ X, Ur -+ Y)", 
+                       leftside=[0, 0, 0], 
+                       latent=[0, 0, 1], 
+                       nvals=[2, 2, 2], 
+                       rlconnect=[0, 0, 0], 
+                       monotone=[0, 0, 0]),
+
+        # "ATE_autobound": lambda self: AutoBound.bound_binaryIV("ATE", self.data, 
+        #                 dagstring="X -> Y, U -> X, U -> Y",
+        #                 unob="U",
+        #                 ),
+        # "PNS_autobound": lambda self: AutoBound.bound_binaryIV("PNS", self.data, 
+        #                 dagstring="X -> Y, U -> X, U -> Y",
+        #                 unob="U",
+        #                 ),
+                        
+        # "ATE_entropybounds-0.80": lambda self: EntropyBounds.bound(self.data, 0.80, 'ATE'),
+        # "ATE_entropybounds-0.20": lambda self: EntropyBounds.bound(self.data, 0.20, 'ATE'),
+        # "ATE_entropybounds-0.10": lambda self: EntropyBounds.bound(self.data, 0.10, 'ATE'),
+        # "PNS_entropybounds-0.80": lambda self: EntropyBounds.bound(self.data, 0.80, 'PNS'),
+        # "PNS_entropybounds-0.20": lambda self: EntropyBounds.bound(self.data, 0.20, 'PNS'),
+        # "PNS_entropybounds-0.10": lambda self: EntropyBounds.bound(self.data, 0.10, 'PNS'),
+
+        # "PNS_entropybounds-trueTheta": lambda self: EntropyBounds.bound(self.data, query='PNS', true_theta=True),
+        # "ATE_entropybounds-trueTheta": lambda self: EntropyBounds.bound(self.data, query='ATE', true_theta=True),
+        
+        # "PNS_entropybounds-randomTheta": lambda self: EntropyBounds.bound(self.data, query='PNS', randomize_theta=True),
+        # "ATE_entropybounds-randomTheta": lambda self: EntropyBounds.bound(self.data, query='ATE', randomize_theta=True),
+
+        # "ATE_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "ATE"),
+        # "PNS_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "PNS"),
+
+        # "ATE_tianpearl": lambda self: TianPearl.bound(self.data, 'ATE'),
+        # "PNS_tianpearl": lambda self: TianPearl.bound(self.data, 'PNS'),
+
+        # "ATE_manski": lambda self: Manski.bound_ATE(self.data)
+
+    }
+
+
+
+   
 
     def generate_data_rolling_ate(N_simulations=2000, n=500, b_lower=-5, b_upper=5, seed=None, b_U_X=None, b_U_Y=None, intercept_X=None, intercept_Y=None, p_U=None):
         """
