@@ -38,7 +38,7 @@ class EntropyBounds:
                 # Use the true theta from the simulation
                 theta = sim['entropy_U']
 
-            df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
+            df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X']})
             failed = False
             
             try:

@@ -4,6 +4,9 @@ import numpy as np
 import pandas as pd
 from simulation_engine.algorithms.autobound import AutoBound
 from simulation_engine.algorithms.causaloptim import Causaloptim
+from simulation_engine.algorithms.entropybounds import EntropyBounds
+from simulation_engine.algorithms.manski import Manski
+from simulation_engine.algorithms.tianpearl import TianPearl
 from simulation_engine.scenarios.scenario import Scenario
 from simulation_engine.util.datagen_util import datagen_util
 
@@ -46,26 +49,26 @@ class BinaryConf(Scenario):
                         unob="U",
                         ),
                         
-        # "ATE_entropybounds-0.80": lambda self: EntropyBounds.bound(self.data, 0.80, 'ATE'),
-        # "ATE_entropybounds-0.20": lambda self: EntropyBounds.bound(self.data, 0.20, 'ATE'),
-        # "ATE_entropybounds-0.10": lambda self: EntropyBounds.bound(self.data, 0.10, 'ATE'),
-        # "PNS_entropybounds-0.80": lambda self: EntropyBounds.bound(self.data, 0.80, 'PNS'),
-        # "PNS_entropybounds-0.20": lambda self: EntropyBounds.bound(self.data, 0.20, 'PNS'),
-        # "PNS_entropybounds-0.10": lambda self: EntropyBounds.bound(self.data, 0.10, 'PNS'),
+        "ATE_entropybounds-0.80": lambda self: EntropyBounds.bound(self.data, 0.80, 'ATE'),
+        "ATE_entropybounds-0.20": lambda self: EntropyBounds.bound(self.data, 0.20, 'ATE'),
+        "ATE_entropybounds-0.10": lambda self: EntropyBounds.bound(self.data, 0.10, 'ATE'),
+        "PNS_entropybounds-0.80": lambda self: EntropyBounds.bound(self.data, 0.80, 'PNS'),
+        "PNS_entropybounds-0.20": lambda self: EntropyBounds.bound(self.data, 0.20, 'PNS'),
+        "PNS_entropybounds-0.10": lambda self: EntropyBounds.bound(self.data, 0.10, 'PNS'),
 
-        # "PNS_entropybounds-trueTheta": lambda self: EntropyBounds.bound(self.data, query='PNS', true_theta=True),
-        # "ATE_entropybounds-trueTheta": lambda self: EntropyBounds.bound(self.data, query='ATE', true_theta=True),
+        "PNS_entropybounds-trueTheta": lambda self: EntropyBounds.bound(self.data, query='PNS', true_theta=True),
+        "ATE_entropybounds-trueTheta": lambda self: EntropyBounds.bound(self.data, query='ATE', true_theta=True),
         
-        # "PNS_entropybounds-randomTheta": lambda self: EntropyBounds.bound(self.data, query='PNS', randomize_theta=True),
-        # "ATE_entropybounds-randomTheta": lambda self: EntropyBounds.bound(self.data, query='ATE', randomize_theta=True),
+        "PNS_entropybounds-randomTheta": lambda self: EntropyBounds.bound(self.data, query='PNS', randomize_theta=True),
+        "ATE_entropybounds-randomTheta": lambda self: EntropyBounds.bound(self.data, query='ATE', randomize_theta=True),
 
         # "ATE_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "ATE"),
         # "PNS_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "PNS"),
 
-        # "ATE_tianpearl": lambda self: TianPearl.bound(self.data, 'ATE'),
-        # "PNS_tianpearl": lambda self: TianPearl.bound(self.data, 'PNS'),
+        "ATE_tianpearl": lambda self: TianPearl.bound(self.data, 'ATE'),
+        "PNS_tianpearl": lambda self: TianPearl.bound(self.data, 'PNS'),
 
-        # "ATE_manski": lambda self: Manski.bound_ATE(self.data)
+        "ATE_manski": lambda self: Manski.bound_ATE(self.data)
 
     }
 
