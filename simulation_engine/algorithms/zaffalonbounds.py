@@ -13,7 +13,7 @@ class ZaffalonBounds:
 
     
     @staticmethod
-    def bound_binaryIV(data, query, max_workers=None):
+    def bound_binaryIV(data, query, max_workers=None, isConf=False):
 
         # if max_workers is None, use the number of available CPUs
         if max_workers is None:
@@ -23,7 +23,7 @@ class ZaffalonBounds:
         row_dicts = [row.to_dict() for _, row in data.iterrows()]
         
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            func = partial(ZaffalonBounds._run_zaffalon_from_row_dict, query=query)
+            func = partial(ZaffalonBounds._run_zaffalon_from_row_dict, query=query, isConf=isConf)
             results = list(executor.map(func, row_dicts))
 
         results_df = pd.DataFrame(results)
@@ -32,11 +32,15 @@ class ZaffalonBounds:
 
 
     @staticmethod
-    def _run_zaffalon_from_row_dict(row_dict, query):
+    def _run_zaffalon_from_row_dict(row_dict, query, isConf=False):
 
         try:
-            df = pd.DataFrame({'Y': row_dict['Y'], 'X': row_dict['X'], 'Z': row_dict['Z']})
-            bound_lower, bound_upper = ZaffalonBounds.run_experiment_binaryIV(query, df)
+            if isConf:
+                # For confounding variables, we only need X and Y
+                df = pd.DataFrame({'Y': row_dict['Y'], 'X': row_dict['X']})
+            else:
+                df = pd.DataFrame({'Y': row_dict['Y'], 'X': row_dict['X'], 'Z': row_dict['Z']})
+            bound_lower, bound_upper = ZaffalonBounds.run_experiment_binaryIV(query, df, isConf=isConf)
 
             failed = False
 
@@ -65,7 +69,7 @@ class ZaffalonBounds:
 
 
     @staticmethod
-    def run_experiment_binaryIV(query, df):
+    def run_experiment_binaryIV(query, df, isConf=False):
         # Resolve path to this file
         this_dir = os.path.abspath(os.path.dirname(__file__))
         
@@ -77,7 +81,7 @@ class ZaffalonBounds:
         if not jpype.isJVMStarted():
             jpype.startJVM(classpath=[jar_zaffalon, jar_credici])
 
-        csv_data = ZaffalonBounds._dataframe_to_csv_string(df)
+        csv_data = ZaffalonBounds._dataframe_to_csv_string(df, isConf=isConf)
 
 
         ByteArrayInputStream = jpype.JClass("java.io.ByteArrayInputStream")
@@ -87,7 +91,7 @@ class ZaffalonBounds:
         query = String(query)
 
         BinaryTask = jpype.JClass("binaryIV.BinaryIVTask")
-        task = BinaryTask(stream, query)
+        task = BinaryTask(stream, query, jpype.JBoolean(isConf))
         result = task.call()
                 
         # result looks like this: '-0.5813,-0.2671'
@@ -99,7 +103,16 @@ class ZaffalonBounds:
 
 
     @staticmethod
-    def _dataframe_to_csv_string(df):
+    def _dataframe_to_csv_string(df, isConf=False):
+        if isConf:
+            csv_data = "X,Y\n"
+            for x, y in zip(df['X'].values, df['Y'].values):
+                csv_data += f"{x},{y}\n"
+            #write to CSV for testing
+            # with open("test.csv", "w") as f:
+            #     f.write(csv_data)
+            return csv_data.strip()
+            
         csv_data = "Z,X,Y\n"
         for z, x, y in zip(df['Z'].values, df['X'].values, df['Y'].values):
             csv_data += f"{z},{x},{y}\n"

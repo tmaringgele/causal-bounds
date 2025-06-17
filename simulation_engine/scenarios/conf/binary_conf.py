@@ -5,6 +5,7 @@ from simulation_engine.algorithms.causaloptim import Causaloptim
 from simulation_engine.algorithms.entropybounds import EntropyBounds
 from simulation_engine.algorithms.manski import Manski
 from simulation_engine.algorithms.tianpearl import TianPearl
+from simulation_engine.algorithms.zaffalonbounds import ZaffalonBounds
 from simulation_engine.scenarios.scenario import Scenario
 from simulation_engine.util.datagen_util import datagen_util
 
@@ -60,8 +61,8 @@ class BinaryConf(Scenario):
         "PNS_entropybounds-randomTheta": lambda self: EntropyBounds.bound(self.data, query='PNS', randomize_theta=True),
         "ATE_entropybounds-randomTheta": lambda self: EntropyBounds.bound(self.data, query='ATE', randomize_theta=True),
 
-        # "ATE_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "ATE"),
-        # "PNS_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "PNS"),
+        "ATE_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "ATE", isConf=True),
+        "PNS_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "PNS", isConf=True),
 
         "ATE_tianpearl": lambda self: TianPearl.bound(self.data, 'ATE'),
         "PNS_tianpearl": lambda self: TianPearl.bound(self.data, 'PNS'),
