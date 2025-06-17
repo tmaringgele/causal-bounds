@@ -254,8 +254,7 @@ class ContinuousIV(Scenario):
         sigma_Y_vec = np.abs(np.random.normal(0, sigma_Y, size=n))
         epsilon_Y = np.random.normal(0, sigma_Y_vec)
 
-        g_Y_name = np.random.choice(list(G_all.keys()))
-        g_Y = G_all[g_Y_name]
+
         g_U_Y_name = np.random.choice(list(G_all.keys()))
         g_U_Y = G_all[g_U_Y_name]
 
@@ -264,14 +263,14 @@ class ContinuousIV(Scenario):
         # Squash and clip Y
         squash_Y_name = np.random.choice(list(squashers.keys()))
         squasher_Y = squashers[squash_Y_name]
-        Y = squasher_Y(g_Y(Y_raw))
+        Y = squasher_Y(Y_raw)
         Y = np.clip(Y, 0, 1)
 
         # Counterfactual outcomes using the *same noise* (factual counterfactual pair assumption)
         Y1_raw = b_X_Y * 1 + b_U_Y * g_U_Y(U) + epsilon_Y
         Y0_raw = b_X_Y * 0 + b_U_Y * g_U_Y(U) + epsilon_Y
-        Y1 = squasher_Y(g_Y(Y1_raw))
-        Y0 = squasher_Y(g_Y(Y0_raw))
+        Y1 = squasher_Y(Y1_raw)
+        Y0 = squasher_Y(Y0_raw)
         Y1 = np.clip(Y1, 0, 1)
         Y0 = np.clip(Y0, 0, 1)
 
@@ -292,7 +291,6 @@ class ContinuousIV(Scenario):
             'intercept_Y': intercept_Y,
             'g_U_X': g_U_X_name,
             'g_U_Y': g_U_Y_name,
-            'g_Y': g_Y_name,
             'squash_X': squash_name,
             'squash_Y': squash_Y_name,
             'ATE_true': ATE_true,
