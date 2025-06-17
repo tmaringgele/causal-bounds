@@ -13,16 +13,15 @@ import warnings
 class ContinuousConf(Scenario):
 
     AVAILABLE_ALGORITHMS = {
-        # "ATE_zhangbareinboim": lambda self: ZhangBareinboim.bound_ATE(self.data),
-        # "ATE_causaloptim--binned": lambda self: self.run_binaryIV('ATE_causaloptim'),
-        # "ATE_autobound--binned": lambda self: self.run_binaryIV('ATE_autobound'),
-        # "ATE_zaffalonbounds--binned": lambda self: self.run_binaryIV('ATE_zaffalonbounds'),
-        # "ATE_2SLS-0.99": lambda self: self.bound_ate_2SLS(0.99),
-        # "ATE_2SLS-0.98": lambda self: self.bound_ate_2SLS(0.98),
-        # "ATE_2SLS-0.95": lambda self: self.bound_ate_2SLS(0.95),
-        # "ATE_entropybounds-0.80--binned": lambda self: self.run_binaryIV('ATE_entropybounds-0.80'),
-        # "ATE_entropybounds-0.20--binned": lambda self: self.run_binaryIV('ATE_entropybounds-0.20'),
-        # "ATE_entropybounds-0.10--binned": lambda self: self.run_binaryIV('ATE_entropybounds-0.10'),
+        "ATE_causaloptim--binned": lambda self: self.run_binaryConf('ATE_causaloptim'),
+        "ATE_autobound--binned": lambda self: self.run_binaryConf('ATE_autobound'),
+        "ATE_zaffalonbounds--binned": lambda self: self.run_binaryConf('ATE_zaffalonbounds'),
+        "ATE_OLS-0.99": lambda self: self.bound_ate_OLS(0.99),
+        "ATE_OLS-0.98": lambda self: self.bound_ate_OLS(0.98),
+        "ATE_OLS-0.95": lambda self: self.bound_ate_OLS(0.95),
+        "ATE_entropybounds-0.80--binned": lambda self: self.run_binaryConf('ATE_entropybounds-0.80'),
+        "ATE_entropybounds-0.20--binned": lambda self: self.run_binaryConf('ATE_entropybounds-0.20'),
+        "ATE_entropybounds-0.10--binned": lambda self: self.run_binaryConf('ATE_entropybounds-0.10'),
     }
 
     def __init__(self, dag, dataframe_cont, cutoff=0.5):
@@ -31,7 +30,7 @@ class ContinuousConf(Scenario):
         self.data = dataframe_cont
         binned_data = self._bin_data(dataframe_cont, cutoff)
         # Create internal binary IV object
-        self.binaryConf = BinaryConf(dag, binned_data)
+        self.binary = BinaryConf(dag, binned_data)
 
     def _bin_data(self, dataframe_cont, cutoff=0.5):
         data = dataframe_cont.copy()
@@ -43,9 +42,9 @@ class ContinuousConf(Scenario):
             data.at[idx, 'Y'] = y_array.astype(int)
         return data  
     
-    def run_binaryIV(self, algorithm='ATE_causaloptim'):
+    def run_binaryConf(self, algorithm='ATE_causaloptim'):
         """
-        Run the binary IV algorithm on the continuous IV data.
+        Run the binary algorithm on the continuous data.
 
         Args:
             algorithm (str): The name of the algorithm to run. Default is 'ATE_causaloptim'.
@@ -53,29 +52,29 @@ class ContinuousConf(Scenario):
         Returns:
             pd.DataFrame: The results of the binary IV algorithm.
         """
-        if algorithm not in self.binaryIV.get_algorithms():
+        if algorithm not in self.binary.get_algorithms():
             raise ValueError(f"Algorithm '{algorithm}' is not available.")
         
-        print("Entering binned Binary IV Scenario for algorithm:", algorithm)
+        print("Entering binned Binary Scenario for algorithm:", algorithm)
         # Run the specified algorithm on the binary IV object
-        self.binaryIV.run([algorithm])
+        self.binary.run([algorithm])
 
         # add the result cols to the continuous IV data
         # they all start with the algorithm name
-        for col in self.binaryIV.data.columns:
+        for col in self.binary.data.columns:
             if col.startswith(algorithm):
                 #add '-binned-0.5' to the algorithm name
                 col_without_name = col.replace(algorithm, '')
                 new_col_name = f"{algorithm}--binned{col_without_name}"
-                self.data[new_col_name] = self.binaryIV.data[col]
+                self.data[new_col_name] = self.binary.data[col]
 
-        print("Exiting binned Binary IV Scenario.")
+        print("Exiting binned Binary Scenario.")
         
         return self.data
 
-    def bound_ate_2SLS(self, ci_level=0.98):
+    def bound_ate_OLS(self, ci_level=0.98):
         """
-        Compute 2SLS bounds for the ATE using the given confidence level.
+        Compute OLS bounds for the ATE using the given confidence level.
 
         Args:
             ci_level (float): Confidence level for the bounds. Default is 0.98.
@@ -84,7 +83,7 @@ class ContinuousConf(Scenario):
             Void: This method modifies the self.data DataFrame in place.
         """
         for idx, sim in self.data.iterrows():
-            df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X'], 'Z': sim['Z']})
+            df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X']})
             # Add a constant term for the exogenous variables
             df['const'] = 1  # Adding a constant column
 
@@ -92,26 +91,29 @@ class ContinuousConf(Scenario):
             dependent = df['Y']
             endog = df['X']
             exog = df[['const']]  # Exogenous variables (constant term)
-            instruments = df['Z']
 
             failed = False
             try:
+                import statsmodels.api as sm
+                import statsmodels.stats.api as sms
+                import warnings
                 with warnings.catch_warnings(record=True) as w:
                     warnings.simplefilter("always")
-                    # Perform 2SLS regression
-                    model = IV2SLS(dependent, exog, endog, instruments).fit()
-                    CI_upper = model.conf_int(level=ci_level).loc['X']['upper']
+                    # Perform OLS regression
+                    model = sm.OLS(dependent, exog.join(endog)).fit(cov_type='HC3')  # HC3 is robust to heteroskedasticity
+                    # Get confidence interval for X coefficient
+                    CI = model.conf_int(alpha=1-ci_level).loc['X']
+                    CI_lower = CI[0]
+                    CI_upper = CI[1]
                     if CI_upper > 1:
                         CI_upper = 1
-
-                    CI_lower = model.conf_int(level=ci_level).loc['X']['lower']
                     if CI_lower < -1:
                         CI_lower = -1
                     # If any warnings were raised, treat as failure
                     if len(w) > 0:
-                        raise RuntimeError(f"2SLS produced warnings: {[str(warn.message) for warn in w]}")
+                        raise RuntimeError(f"OLS produced warnings: {[str(warn.message) for warn in w]}")
             except Exception as e:
-                # print(f"2SLS failed for simulation {idx} with error: {e}")
+                # print(f"OLS failed for simulation {idx} with error: {e}")
                 CI_upper = 1
                 CI_lower = -1
                 failed = True
@@ -120,13 +122,11 @@ class ContinuousConf(Scenario):
             CI_width = CI_upper - CI_lower
 
             ci_level_str = f"{ci_level:.2f}"
-            self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_lower'] = CI_lower
-            self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_upper'] = CI_upper
-            self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_valid'] = CI_valid
-            self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_width'] = CI_width
-            self.data.at[idx, 'ATE_2SLS-' + ci_level_str + '_bound_failed'] = failed
-
-
+            self.data.at[idx, 'ATE_OLS-' + ci_level_str + '_bound_lower'] = CI_lower
+            self.data.at[idx, 'ATE_OLS-' + ci_level_str + '_bound_upper'] = CI_upper
+            self.data.at[idx, 'ATE_OLS-' + ci_level_str + '_bound_valid'] = CI_valid
+            self.data.at[idx, 'ATE_OLS-' + ci_level_str + '_bound_width'] = CI_width
+            self.data.at[idx, 'ATE_OLS-' + ci_level_str + '_bound_failed'] = failed
 
 
     @staticmethod
