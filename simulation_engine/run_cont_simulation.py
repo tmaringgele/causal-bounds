@@ -26,11 +26,12 @@ def install_causaloptim():
 def main(N_simulations, R_path):
     print(f"Setting R path to {R_path}", flush=True)
     os.environ['R_HOME'] = R_path
-    from simulation_engine.scenarios.iv.continuous_iv import ContinuousIV
+   
     #install the R causaloptim package
     # install_causaloptim()
     r('.libPaths(c("/usr/local/lib/R/site-library", .libPaths()))')
 
+    from simulation_engine.scenarios.iv.continuous_iv import ContinuousIV
     print(f"Running simulation with N_simulations = {N_simulations}", flush=True)    
     
     data = ContinuousIV.run_rolling_b_X_Y_simulations(N_points=N_simulations, replications=1, n=500)
