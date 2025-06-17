@@ -74,7 +74,7 @@ def run_contConf(N_simulations, foldername):
     from simulation_engine.scenarios.conf.continuous_conf import ContinuousConf
     print(f"Running contConf simulation with N_simulations = {N_simulations}", flush=True)    
     
-    data = ContinuousConf.generate_data_rolling_ate(N_simulations)
+    data = ContinuousConf.run_rolling_b_X_Y_simulations(N_points=N_simulations, replications=1, n=500)
     print("Data generation complete", flush=True)
 
     binaryIV = ContinuousConf('IV Dag', data)
@@ -99,7 +99,7 @@ def main(N_simulations, R_path):
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     foldername = f'simulation_results_{timestamp}'
     os.makedirs(foldername, exist_ok=True)
-    
+
     run_binaryIV(N_simulations, foldername)
     run_contIV(N_simulations, foldername)
     run_binaryConf(N_simulations, foldername)
