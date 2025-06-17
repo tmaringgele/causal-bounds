@@ -34,21 +34,21 @@ class ZaffalonBounds:
     @staticmethod
     def _run_zaffalon_from_row_dict(row_dict, query, isConf=False):
 
-        try:
-            if isConf:
-                # For confounding variables, we only need X and Y
-                df = pd.DataFrame({'Y': row_dict['Y'], 'X': row_dict['X']})
-            else:
-                df = pd.DataFrame({'Y': row_dict['Y'], 'X': row_dict['X'], 'Z': row_dict['Z']})
-            bound_lower, bound_upper = ZaffalonBounds.run_experiment_binaryIV(query, df, isConf=isConf)
+        # try:
+        if isConf:
+            # For confounding variables, we only need X and Y
+            df = pd.DataFrame({'Y': row_dict['Y'], 'X': row_dict['X']})
+        else:
+            df = pd.DataFrame({'Y': row_dict['Y'], 'X': row_dict['X'], 'Z': row_dict['Z']})
+        bound_lower, bound_upper = ZaffalonBounds.run_experiment_binaryIV(query, df, isConf=isConf)
 
-            failed = False
+        failed = False
 
-        except Exception as e:
-            bound_lower = AlgUtil.get_trivial_Ceils(query)[0]
-            bound_upper = AlgUtil.get_trivial_Ceils(query)[1]
-            print(f"Error in Zaffalon: {e}")
-            failed = True
+        # except Exception as e:
+            # bound_lower = AlgUtil.get_trivial_Ceils(query)[0]
+            # bound_upper = AlgUtil.get_trivial_Ceils(query)[1]
+            # print(f"Error in Zaffalon: {e}")
+            # failed = True
 
         #Flatten bounds to trivial ceils
         if failed:
@@ -98,6 +98,10 @@ class ZaffalonBounds:
         # Convert to tuple of floats
         # print("Zaffalon result:", result)
         result_str = str(result)  # Convert java.lang.String to Python str
+
+        if 'ERROR' in result_str:
+            raise RuntimeError(f"Zaffalon Java returned an error: {result_str}")
+
         lower, upper = map(float, result_str.strip().split(","))
         return (lower, upper)
 

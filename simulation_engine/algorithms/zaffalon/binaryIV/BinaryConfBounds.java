@@ -53,16 +53,17 @@ public class BinaryConfBounds {
     
 
 
-    public static double[] getBounds(TIntIntMap[] data , int maxIter, int runs, String query,int X, int Y, int U) throws Exception {
+    public static double[] getBounds(TIntIntMap[] data, int maxIter, int runs, String query, int X, int Y, int U)
+            throws Exception {
 
-
+        //int X = 0, Y = 1, U = 2;
         
 
         // Endogenous DAG (only X -> Y among observed endogenous variables)
-        SparseDirectedAcyclicGraph endoDAG = DAGUtil.build("(1,2)");
+        SparseDirectedAcyclicGraph endoDAG = DAGUtil.build("(0,1)");
 
         // Complete causal DAG including exogenous influences (U->X, U->Y, X->Y)
-        SparseDirectedAcyclicGraph causalDAG = DAGUtil.build("(3,1),(3,2),(1,2)");
+        SparseDirectedAcyclicGraph causalDAG = DAGUtil.build("(2,0),(2,1),(0,1)");
 
         // Build the SCM with binary variables (cardinality 2) and the specified DAG
         StructuralCausalModel scm = CausalBuilder.of(causalDAG, 2)
