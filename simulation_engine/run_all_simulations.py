@@ -98,6 +98,8 @@ def main(N_simulations, R_path):
     #use current timestamp for folder name
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     foldername = f'simulation_results_{timestamp}'
+    os.makedirs(foldername, exist_ok=True)
+    
     run_binaryIV(N_simulations, foldername)
     run_contIV(N_simulations, foldername)
     run_binaryConf(N_simulations, foldername)
@@ -111,8 +113,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run simulations.")
     parser.add_argument("N_simulations", type=int, help="Number of simulations to run")
     parser.add_argument("--R_path", type=str, default="D:/Program Files/R/R-4.3.1", help="Path to R installation")
-    ## Example usage: python .\run_binary_simulation.py 2 --R_path "D:/Program Files/R-4.5.0"
-    ## Example usage: python .\run_binary_simulation.py 2 --R_path "/usr/lib/R"
+    ## Example usage: python .\run_all_simulation.py 2 --R_path "D:/Program Files/R-4.5.0"
+    ## Example usage: python run_all_simulations.py 2 --R_path "/usr/lib/R"
 
     args = parser.parse_args()
     main(args.N_simulations, args.R_path)
