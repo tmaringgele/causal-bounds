@@ -63,6 +63,46 @@ class PlottingUtil:
                 print(f"Algorithm: {algorithm} not found in dataframe columns.")
 
     @staticmethod
+    def _ensure_lower_leq_upper(df, lower_col, upper_col):
+        """
+        Ensure that lower_col <= upper_col in the DataFrame. If not, swap the values.
+        Modifies the DataFrame in-place.
+        """
+        mask = df[lower_col] > df[upper_col]
+        tmp = df.loc[mask, lower_col].copy()
+        df.loc[mask, lower_col] = df.loc[mask, upper_col]
+        df.loc[mask, upper_col] = tmp
+
+    @staticmethod
+    def _sanitize_bounds(df, algorithm, query):
+        """
+        Ensure lower <= upper, flatten bounds to trivial ceils, and update bound_valid.
+        Modifies the DataFrame in-place.
+        """
+        lower_col = f'{algorithm}_bound_lower'
+        upper_col = f'{algorithm}_bound_upper'
+        failed_col = f'{algorithm}_bound_failed'
+        true_col = f'{query}_true'
+        valid_col = f'{algorithm}_bound_valid'
+
+        # Ensure lower <= upper, else swap
+        PlottingUtil._ensure_lower_leq_upper(df, lower_col, upper_col)
+
+        # Flatten bounds to trivial ceils
+        flat_lower, flat_upper = AlgUtil.flatten_bounds_to_trivial_ceils_vectorized(
+            query,
+            df[lower_col],
+            df[upper_col],
+            df[failed_col]
+        )
+        df[lower_col] = flat_lower
+        df[upper_col] = flat_upper
+
+        # Update bound_valid: True iff lower <= true <= upper
+        if true_col in df.columns:
+            df[valid_col] = (df[lower_col] <= df[true_col]) & (df[upper_col] >= df[true_col])
+
+    @staticmethod
     def print_bound_statistics_table(dataframe, algorithms=['autobound', 'causaloptim'], query=None):
         """
         Print statistics of the bounds for the given algorithms in a table format.
@@ -89,12 +129,8 @@ class PlottingUtil:
             if f'{algorithm}_bound_valid' in df.columns:
                 query = algorithm.split('_')[0]  # Extract query type from algorithm name
 
-                # Ensure bound_valid is correct
-                # it should be True iff lower <= true <= upper
-                df[f'{algorithm}_bound_valid'] = (df[f'{algorithm}_bound_lower'] <= df[f'{query}_true']) & \
-                                                (df[f'{algorithm}_bound_upper'] >= df[f'{query}_true'])
-                
-                
+                # Sanitize bounds and update bound_valid
+                PlottingUtil._sanitize_bounds(df, algorithm, query)
 
                 failed_bounds = df[df[f'{algorithm}_bound_failed'].fillna(False)].shape[0]
                 without_failed = df[df[f'{algorithm}_bound_failed'].fillna(False) == False]
@@ -340,9 +376,13 @@ class PlottingUtil:
 
         alpha = 0.8
         for algorithm in algorithms:
-            if f'{algorithm}_bound_lower' in df.columns and f'{algorithm}_bound_upper' in df.columns:
-                df[f'{algorithm}_bound_lower_smooth'] = df[f'{algorithm}_bound_lower'].rolling(window=window, center=True).mean()
-                df[f'{algorithm}_bound_upper_smooth'] = df[f'{algorithm}_bound_upper'].rolling(window=window, center=True).mean()
+            lower_col = f'{algorithm}_bound_lower'
+            upper_col = f'{algorithm}_bound_upper'
+            if lower_col in df.columns and upper_col in df.columns:
+                # Sanitize bounds (ensure lower <= upper, flatten, update valid)
+                PlottingUtil._sanitize_bounds(df, algorithm, query)
+                df[f'{algorithm}_bound_lower_smooth'] = df[lower_col].rolling(window=window, center=True).mean()
+                df[f'{algorithm}_bound_upper_smooth'] = df[upper_col].rolling(window=window, center=True).mean()
                 sns.lineplot(data=df, x=roll_over, y=f'{algorithm}_bound_lower_smooth', color=f'C{algorithms.index(algorithm)}', alpha=alpha)
                 sns.lineplot(data=df, x=roll_over, y=f'{algorithm}_bound_upper_smooth', color=f'C{algorithms.index(algorithm)}', label=f'{algorithm}', alpha=alpha)
             else:

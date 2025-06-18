@@ -22,6 +22,13 @@ class ContinuousConf(Scenario):
         "ATE_entropybounds-0.80--binned": lambda self: self.run_binaryConf('ATE_entropybounds-0.80'),
         "ATE_entropybounds-0.20--binned": lambda self: self.run_binaryConf('ATE_entropybounds-0.20'),
         "ATE_entropybounds-0.10--binned": lambda self: self.run_binaryConf('ATE_entropybounds-0.10'),
+
+        # these are missing:
+        #"ATE_entropybounds-trueTheta--binned": lambda self: self.run_binaryConf('ATE_entropybounds-trueTheta'), does not work because U \in R
+        "ATE_entropybounds-randomTheta--binned": lambda self: self.run_binaryConf('ATE_entropybounds-randomTheta'),
+        "ATE_tianpearl--binned": lambda self: self.run_binaryConf('ATE_tianpearl'),
+        "ATE_manski--binned": lambda self: self.run_binaryConf('ATE_manski'),
+
     }
 
     def __init__(self, dag, dataframe_cont, cutoff=0.5):
