@@ -23,6 +23,10 @@ class ContinuousIV(Scenario):
         "ATE_entropybounds-0.80--binned": lambda self: self.run_binaryIV('ATE_entropybounds-0.80'),
         "ATE_entropybounds-0.20--binned": lambda self: self.run_binaryIV('ATE_entropybounds-0.20'),
         "ATE_entropybounds-0.10--binned": lambda self: self.run_binaryIV('ATE_entropybounds-0.10'),
+
+        "ATE_entropybounds-randomTheta--binned": lambda self: self.run_binaryIV('ATE_entropybounds-randomTheta'),
+        "ATE_tianpearl--binned": lambda self: self.run_binaryIV('ATE_tianpearl'),
+        "ATE_manski--binned": lambda self: self.run_binaryIV('ATE_manski'),
     }
 
     def __init__(self, dag, dataframe_cont, cutoff=0.5):

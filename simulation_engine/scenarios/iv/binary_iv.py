@@ -68,6 +68,8 @@ class BinaryIV(Scenario):
 
         "ATE_manski": lambda self: Manski.bound_ATE(self.data)
 
+        
+
     }
 
     def __init__(self, dag, dataframe):
