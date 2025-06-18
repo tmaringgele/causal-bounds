@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/479657295259738036/32e6c62d3fae4c0f8ede62bcc018cec1/artifacts
+end_time: null
+entry_point_name: ''
+experiment_id: '479657295259738036'
+lifecycle_stage: active
+run_id: 32e6c62d3fae4c0f8ede62bcc018cec1
+run_name: skittish-ram-799
+run_uuid: 32e6c62d3fae4c0f8ede62bcc018cec1
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1748780074390
+status: 1
+tags: []
+user_id: tmari

@@ -1,0 +1,5 @@
+- +model=apid
+- exp.seed=10
+- exp.logging=False
+- model.curv_coeff=1.0
+- Y_f=[0.0,0.5]

@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/479657295259738036/d3862fd5bba74f4b950fae2b31441a64/artifacts
+end_time: 1748782833422
+entry_point_name: ''
+experiment_id: '479657295259738036'
+lifecycle_stage: active
+run_id: d3862fd5bba74f4b950fae2b31441a64
+run_name: funny-stork-702
+run_uuid: d3862fd5bba74f4b950fae2b31441a64
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1748782797124
+status: 3
+tags: []
+user_id: tmari

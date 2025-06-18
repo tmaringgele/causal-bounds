@@ -1,0 +1,34 @@
+[2025-06-01 12:11:26,425][__main__][INFO] - 
+dataset:
+  n_samples: 1000
+  Y_f:
+  - 0.0
+  - 0.5
+  T_f: 0
+  _target_: src.data.MultiModal
+  name: multi_modal
+model:
+  name: apid
+  _target_: src.models.apid.APID
+  dim_u: 2
+  n_trans: 15
+  tol: 0.0001
+  aug_mode: s
+  n_quantiles: 32
+  eps: 0.5
+  batch_size: 32
+  burn_in_epochs: 500
+  q_epochs: 100
+  curv_epochs: 500
+  noise_std: 0.001
+  lr: 0.01
+  cf_only: true
+  ema_q: 0.99
+  q_coeff: 2.0
+  curv_coeff: 1.0
+exp:
+  seed: 10
+  device: cuda
+  logging: false
+  mlflow_uri: http://127.0.0.1:5000
+

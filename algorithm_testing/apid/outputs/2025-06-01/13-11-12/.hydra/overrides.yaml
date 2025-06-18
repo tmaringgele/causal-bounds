@@ -1,0 +1,4 @@
+- +dataset=normal
+- +model=apid
+- exp.seed=10
+- exp.logging=True

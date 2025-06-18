@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/479657295259738036/07e29f29ae094933988ddf48d2856bf5/artifacts
+end_time: 1748782709124
+entry_point_name: ''
+experiment_id: '479657295259738036'
+lifecycle_stage: active
+run_id: 07e29f29ae094933988ddf48d2856bf5
+run_name: traveling-kit-343
+run_uuid: 07e29f29ae094933988ddf48d2856bf5
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1748782672622
+status: 3
+tags: []
+user_id: tmari

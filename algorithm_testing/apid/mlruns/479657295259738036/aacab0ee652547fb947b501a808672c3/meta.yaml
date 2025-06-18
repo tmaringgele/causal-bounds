@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/479657295259738036/aacab0ee652547fb947b501a808672c3/artifacts
+end_time: 1748778753614
+entry_point_name: ''
+experiment_id: '479657295259738036'
+lifecycle_stage: active
+run_id: aacab0ee652547fb947b501a808672c3
+run_name: amusing-rook-727
+run_uuid: aacab0ee652547fb947b501a808672c3
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1748776905908
+status: 3
+tags: []
+user_id: tmari

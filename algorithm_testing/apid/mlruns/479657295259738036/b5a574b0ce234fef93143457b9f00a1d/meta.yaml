@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/479657295259738036/b5a574b0ce234fef93143457b9f00a1d/artifacts
+end_time: 1748782381532
+entry_point_name: ''
+experiment_id: '479657295259738036'
+lifecycle_stage: active
+run_id: b5a574b0ce234fef93143457b9f00a1d
+run_name: melodic-fox-176
+run_uuid: b5a574b0ce234fef93143457b9f00a1d
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1748782343509
+status: 3
+tags: []
+user_id: tmari

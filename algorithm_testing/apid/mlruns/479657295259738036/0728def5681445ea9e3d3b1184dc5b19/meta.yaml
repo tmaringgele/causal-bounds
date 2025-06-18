@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/479657295259738036/0728def5681445ea9e3d3b1184dc5b19/artifacts
+end_time: 1748858243474
+entry_point_name: ''
+experiment_id: '479657295259738036'
+lifecycle_stage: active
+run_id: 0728def5681445ea9e3d3b1184dc5b19
+run_name: spiffy-carp-33
+run_uuid: 0728def5681445ea9e3d3b1184dc5b19
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1748858219793
+status: 3
+tags: []
+user_id: tmari

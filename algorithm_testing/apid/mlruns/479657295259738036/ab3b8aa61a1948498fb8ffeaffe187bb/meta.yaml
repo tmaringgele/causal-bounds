@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/479657295259738036/ab3b8aa61a1948498fb8ffeaffe187bb/artifacts
+end_time: 1748782074218
+entry_point_name: ''
+experiment_id: '479657295259738036'
+lifecycle_stage: active
+run_id: ab3b8aa61a1948498fb8ffeaffe187bb
+run_name: resilient-elk-827
+run_uuid: ab3b8aa61a1948498fb8ffeaffe187bb
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1748781934829
+status: 3
+tags: []
+user_id: tmari

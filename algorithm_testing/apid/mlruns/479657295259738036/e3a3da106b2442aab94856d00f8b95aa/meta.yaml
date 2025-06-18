@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/479657295259738036/e3a3da106b2442aab94856d00f8b95aa/artifacts
+end_time: 1748858435586
+entry_point_name: ''
+experiment_id: '479657295259738036'
+lifecycle_stage: active
+run_id: e3a3da106b2442aab94856d00f8b95aa
+run_name: worried-skunk-455
+run_uuid: e3a3da106b2442aab94856d00f8b95aa
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1748858411952
+status: 3
+tags: []
+user_id: tmari

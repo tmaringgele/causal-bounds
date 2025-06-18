@@ -1,0 +1,38 @@
+[2025-06-02 11:51:41,389][__main__][INFO] - 
+dataset:
+  n_samples: 10
+  Y_f: 0.0
+  T_f: 0
+  _target_: src.data.MultiModal
+  name: multi_modal
+model:
+  name: apid
+  _target_: src.models.apid.APID
+  dim_u: 2
+  n_trans: 15
+  tol: 0.0001
+  aug_mode: s
+  n_quantiles: 32
+  eps: 0.5
+  batch_size: 32
+  burn_in_epochs: 10
+  q_epochs: 10
+  curv_epochs: 3
+  noise_std: 0.001
+  lr: 0.01
+  cf_only: true
+  ema_q: 0.99
+  q_coeff: 2.0
+  curv_coeff: 0.0
+exp:
+  seed: 10
+  device: cpu
+  logging: true
+  mlflow_uri: http://127.0.0.1:5000
+
+[2025-06-02 11:52:29,658][urllib3.connectionpool][WARNING] - Retrying (Retry(total=6, connect=6, read=7, redirect=7, status=7)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000001835634DF40>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/2.0/mlflow/experiments/get-by-name?experiment_name=apid%2Fmulti_modal
+[2025-06-02 11:52:36,258][urllib3.connectionpool][WARNING] - Retrying (Retry(total=5, connect=5, read=7, redirect=7, status=7)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000001835634EF60>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/2.0/mlflow/experiments/get-by-name?experiment_name=apid%2Fmulti_modal
+[2025-06-02 11:52:46,731][urllib3.connectionpool][WARNING] - Retrying (Retry(total=4, connect=4, read=7, redirect=7, status=7)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000001835634F260>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/2.0/mlflow/experiments/get-by-name?experiment_name=apid%2Fmulti_modal
+[2025-06-02 11:53:05,362][urllib3.connectionpool][WARNING] - Retrying (Retry(total=3, connect=3, read=7, redirect=7, status=7)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000001835634F470>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/2.0/mlflow/experiments/get-by-name?experiment_name=apid%2Fmulti_modal
+[2025-06-02 11:53:39,599][urllib3.connectionpool][WARNING] - Retrying (Retry(total=2, connect=2, read=7, redirect=7, status=7)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000001835634F620>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/2.0/mlflow/experiments/get-by-name?experiment_name=apid%2Fmulti_modal
+[2025-06-02 11:54:46,437][urllib3.connectionpool][WARNING] - Retrying (Retry(total=1, connect=1, read=7, redirect=7, status=7)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000001835634F770>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/2.0/mlflow/experiments/get-by-name?experiment_name=apid%2Fmulti_modal
