@@ -55,5 +55,5 @@ class Manski:
             data.at[idx, f'ATE_manski_bound_failed'] = failed
             data.at[idx, f'ATE_manski_bound_valid'] = bounds_valid
 
-            return data
+        return data
         

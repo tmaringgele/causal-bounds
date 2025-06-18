@@ -71,4 +71,4 @@ class TianPearl:
             data.at[idx, f'{query}_tianpearl_bound_failed'] = failed
             data.at[idx, f'{query}_tianpearl_bound_valid'] = bounds_valid
 
-            return data
+        return data
