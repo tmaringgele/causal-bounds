@@ -6,14 +6,13 @@ from simulation_engine.util.alg_util import AlgUtil
 
 
 class TianPearl:
-
     def bound(data, query):
         """
         Compute Tian & Pearl bounds for a given query using only observed treatment (X) and outcome (Y).
-        
+
         Supported queries:
             - 'ATE' : Average Treatment Effect
-            - 'PNS' : Probability of Necessity and Sufficiency
+            - 'PNS' : Probability of Necessity and Sufficiency (without assuming exogeneity)
 
         Args:
             query (str): One of 'ATE' or 'PNS'
@@ -29,35 +28,39 @@ class TianPearl:
             failed = False
 
             try:
-                p1 = np.mean(Y[X == 1]) if np.any(X == 1) else 0.0
-                p0 = np.mean(Y[X == 0]) if np.any(X == 0) else 0.0
-
                 if query == 'ATE':
+                    p1 = np.mean(Y[X == 1]) if np.any(X == 1) else 0.0
+                    p0 = np.mean(Y[X == 0]) if np.any(X == 0) else 0.0
 
                     # Bounds on P(Y=1 | do(X=1)) and do(X=0)
                     lower_do1 = p1
                     upper_do1 = 1 - p0
                     lower_do0 = p0
                     upper_do0 = 1 - p1
+
                     # ATE bounds are differences of those intervals
                     lower = lower_do1 - upper_do0
                     upper = upper_do1 - lower_do0
 
                 elif query == 'PNS':
+                    # Nonparametric bounds without assuming exogeneity
+                    p_xy = np.mean((X == 1) & (Y == 1))
+                    p_x0y0 = np.mean((X == 0) & (Y == 0))
 
-                    lower = max(0, p1 - p0)
-                    upper = min(p1, 1 - p0)
+                    lower = 0.0
+                    upper = p_xy + p_x0y0
 
                 # Ensure logical ordering
                 lower, upper = min(lower, upper), max(lower, upper)
 
             except Exception:
                 failed = True
+                lower, upper = 0.0, 1.0  # fallback in case of failure
 
             # Flatten bounds to trivial ceils
             lower, upper = AlgUtil.flatten_bounds_to_trivial_ceils(query, lower, upper, failed)
 
-            # Validity check only makes sense for ATE (if ATE_true is in the data)
+            # Validity check
             if query == 'ATE':
                 bounds_valid = lower <= sim['ATE_true'] <= upper
             else:
