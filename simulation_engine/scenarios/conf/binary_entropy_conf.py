@@ -10,9 +10,10 @@ from simulation_engine.scenarios.scenario import Scenario
 from simulation_engine.util.datagen_util import datagen_util
 
 
-class BinaryConf(Scenario):
+class BinaryEntropyConf(Scenario):
     """
-    Binary Confounder Scenario
+    Binary Confounder Scenario.
+    Specifically for evaluating entropybounds
     """
 
     def __init__(self,dataframe):
@@ -129,7 +130,7 @@ class BinaryConf(Scenario):
 
    
 
-    def generate_data_rolling_ate(N_simulations=2000, n=500, b_lower=-5, b_upper=5, seed=None, b_U_X=None, b_U_Y=None, intercept_X=None, intercept_Y=None, p_U=None, uniform_confounder_entropy=False):
+    def generate_data_rolling_ate(N_simulations=2000, n=500, b_lower=-5, b_upper=5, seed=None, b_U_X=None, b_U_Y=None, intercept_X=None, intercept_Y=None, p_U=None, uniform_confounder_entropy=False, noise=False, h_target=None):
         """
         Generate data for a binary instrumental variable scenario.
 
@@ -152,7 +153,7 @@ class BinaryConf(Scenario):
         step_size = (5 - (-5)) / N_simulations
 
         for b_X_Y in np.linspace(b_lower, b_upper, N_simulations):
-            result = BinaryConf._generate_data(
+            result = BinaryEntropyConf._generate_data(
                 n=n,
                 seed=seed,
                 b_U_X=b_U_X,
@@ -161,7 +162,9 @@ class BinaryConf(Scenario):
                 intercept_X=intercept_X,
                 intercept_Y=intercept_Y,
                 p_U=p_U,
-                uniform_confounder_entropy=uniform_confounder_entropy
+                uniform_confounder_entropy=uniform_confounder_entropy,
+                noise=noise,
+                h_target=h_target
                 )
             df_results.append(result)
         return pd.DataFrame(df_results)
@@ -176,7 +179,9 @@ class BinaryConf(Scenario):
         intercept_X=None,
         intercept_Y=None,
         p_U=None,
-        uniform_confounder_entropy=False
+        uniform_confounder_entropy=False,
+        noise=False,
+        h_target=None
     ):
         """
         Simulate binary data using a structural causal model (SCM) with additive, heteroskedastic noise.
@@ -195,6 +200,7 @@ class BinaryConf(Scenario):
             p_U, p_Z (float): Probabilities for binary exogenous variables U and Z. 
                             If None, drawn from Uniform(0,1).
             uniform_confounder_entropy (bool): If True, samples `p_U` to induce uniform entropy in U.
+            noise (bool): If True, adds heteroskedastic noise to the outcome Y. Otherwise, the Model is deterministic.
 
         Returns:
             dict: Contains simulated variables (Z, U, X, Y), true ATE and PNS, parameters used, 
@@ -223,19 +229,31 @@ class BinaryConf(Scenario):
         if intercept_Y is None:
             intercept_Y = np.random.normal(0, 1)
         if uniform_confounder_entropy:
-            p_U = datagen_util._sample_p_with_uniform_entropy()
+            p_U = datagen_util._sample_p_with_uniform_entropy(h_target)
         elif p_U is None:
             p_U = np.random.uniform(0, 1)
 
         # Exogenous binary variables
         U = np.random.binomial(1, p_U, size=n)
 
-        logit_X = intercept_X + b_U_X * U
+        if noise:
+            # Heteroskedastic noise: sigma_i ~ |N(0,1)| for each observation
+            sigma_X_vec = np.abs(np.random.normal(0, 1, size=n))
+            epsilon_X = np.random.normal(0, sigma_X_vec)
+        else:
+            epsilon_X = np.zeros(n)
+
+        logit_X = intercept_X + b_U_X * U + epsilon_X
         p_X = squasher_X(logit_X)
         X = np.random.binomial(1, p_X)
 
+        if noise:
+            sigma_Y_vec = np.abs(np.random.normal(0, 1, size=n))
+            epsilon_Y = np.random.normal(0, sigma_Y_vec)
+        else:
+            epsilon_Y = np.zeros(n)
 
-        logit_Y = intercept_Y + b_X_Y * X + b_U_Y * U 
+        logit_Y = intercept_Y + b_X_Y * X + b_U_Y * U  + epsilon_Y
         p_Y = squasher_Y(logit_Y)
         Y = np.random.binomial(1, p_Y)
 
@@ -262,6 +280,9 @@ class BinaryConf(Scenario):
             'U': U,
             'X': X,
             'Y': Y,
+            'epsilon_X': epsilon_X,
+            'epsilon_Y': epsilon_Y,
+            'noise': noise,
             'entropy_U': datagen_util.entropy_of_array(U),
             'entropy_X': datagen_util.entropy_of_array(X),
             'entropy_Y': datagen_util.entropy_of_array(Y),

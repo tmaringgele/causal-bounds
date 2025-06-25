@@ -26,7 +26,7 @@ class datagen_util:
         return squashers
     
     @staticmethod
-    def _sample_p_with_uniform_entropy():
+    def _sample_p_with_uniform_entropy(h_target):
         """
         Sample a Bernoulli parameter p such that the entropy H(Ber(p)) is uniformly distributed in [0,1].
 
@@ -46,9 +46,10 @@ class datagen_util:
             return scipy.optimize.bisect(f, 1e-6, 0.5 - 1e-6)
 
         # Step 1: Sample target entropy
-        h = np.random.uniform(0, 1)
+        if h_target is None:
+            h_target = np.random.uniform(0, 1)
         # Step 2: Find p in [0, 0.5]
-        p = inverse_entropy(h)
+        p = inverse_entropy(h_target)
         # Step 3: Reflect with 50% probability
         return p if np.random.rand() < 0.5 else 1 - p
 
