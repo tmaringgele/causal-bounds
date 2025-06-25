@@ -8,6 +8,27 @@ class AutoBound:
     Class to run the AutoBound algorithm for causal inference.
     """
 
+
+    @staticmethod
+    def bound(query, data, dagstring="Z -> X, X -> Y, U -> X, U -> Y", unob="U", indep="X", dep="Y"):
+        print("Running AutoBound for query:", query)
+
+    def _compute_joint_probabilities(df, observed, unob):
+        """
+        Computes the joint probabilities for all Variables in the input DataFrame (except for the unobserved variable).
+        Parameters:
+            df (pd.DataFrame): Input DataFrame for observed variables.
+            observed (list): List of observed variables.
+            unob (str): Name of the unobserved variable.
+        """
+        joint_counts = df.groupby(observed).size().reset_index(name='count')
+        total_count = len(df)
+        joint_counts['prob'] = joint_counts['count'] / total_count
+        joint_probs = joint_counts.drop(columns=['count'])
+        return joint_probs
+
+
+
     @staticmethod 
     def bound_binaryIV(query, data, dagstring="Z -> X, X -> Y, U -> X, U -> Y", unob="U"):
         for idx, sim in data.iterrows():
