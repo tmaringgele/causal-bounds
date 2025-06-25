@@ -10,11 +10,34 @@ class AutoBound:
 
 
     @staticmethod
-    def bound(query, data, dagstring="Z -> X, X -> Y, U -> X, U -> Y", unob="U", indep="X", dep="Y"):
-        print("Running AutoBound for query:", query)
+    def bound(query, data, dagstring="Z -> X, X -> Y, U -> X, U -> Y", observed=['Z', 'X', 'Y'], unob=['U'], indep="X", dep="Y"):
+        joint_probs = AutoBound._compute_joint_probabilities(data, observed)
+
+        dag = DAG()
+        dag.from_structure(dagstring, AutoBound._build_unobserved_string(unob))   
+        
+        problem = causalProblem(dag)
+
+        problem.load_data_pandas(joint_probs)
+        problem.add_prob_constraints()
+
+        if query == 'ATE':
+            problem.set_ate(indep, dep)
+        elif query == 'PNS':
+            pns_query = problem.query(f"{dep}({indep}=1)=1 & {dep}({indep}=0)=0")
+            problem.set_estimand(pns_query)
+        else:
+            raise ValueError("Query must be either 'ATE' or 'PNS'.")
+
+        program = problem.write_program()
+        lb, ub = program.run_pyomo(solver_name='glpk', verbose=True)
+
+        return lb, ub
+
+
 
     @staticmethod
-    def _compute_joint_probabilities(df, observed, unob):
+    def _compute_joint_probabilities(df, observed):
         """
         Computes the joint probabilities for all Variables in the input DataFrame (except for the unobserved variable).
         Parameters:
@@ -27,6 +50,18 @@ class AutoBound:
         joint_counts['prob'] = joint_counts['count'] / total_count
         joint_probs = joint_counts.drop(columns=['count'])
         return joint_probs
+    
+    @staticmethod
+    def _build_unobserved_string(unob):
+        """
+        turn array of ['U1', 'U2'] into 'U1, U2'
+        """
+        if isinstance(unob, list):
+            return ', '.join(unob)
+        elif isinstance(unob, str):
+            return unob
+        else:
+            raise ValueError("Unobserved variable must be a string or a list of strings.")
 
 
 
@@ -94,6 +129,8 @@ class AutoBound:
         lb, ub = program.run_pyomo(solver_name='glpk', verbose=False)
 
         return lb, ub
+    
+
     
     @staticmethod
     def _compute_joint_probabilities_IV(df):
