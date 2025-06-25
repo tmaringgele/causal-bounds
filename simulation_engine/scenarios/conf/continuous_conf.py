@@ -30,13 +30,13 @@ class ContinuousConf(Scenario):
 
     }
 
-    def __init__(self, dag, dataframe_cont, cutoff=0.5):
-        super().__init__(dag)
+    def __init__(self, dataframe_cont, cutoff=0.5):
+        super().__init__()
         self.cutoff = cutoff
         self.data = dataframe_cont
         binned_data = self._bin_data(dataframe_cont, cutoff)
         # Create internal binary IV object
-        self.binary = BinaryConf(dag, binned_data)
+        self.binary = BinaryConf(binned_data)
 
     def _bin_data(self, dataframe_cont, cutoff=0.5):
         data = dataframe_cont.copy()

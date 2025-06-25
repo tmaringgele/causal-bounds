@@ -72,8 +72,8 @@ class BinaryIV(Scenario):
 
     }
 
-    def __init__(self, dag, dataframe):
-        super().__init__(dag)
+    def __init__(self,dataframe):
+        super().__init__()
         self.data = dataframe
 
 

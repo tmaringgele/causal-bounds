@@ -3,8 +3,7 @@ import time
 from datetime import datetime
 
 class Scenario(ABC):
-    def __init__(self, dag):
-        self.dag = dag
+    def __init__(self):
         self.data = None
 
     AVAILABLE_ALGORITHMS = {}
