@@ -13,7 +13,7 @@ class CustomBinaryDAG(Scenario):
         "ATE_autobound": lambda self: AutoBound.bound_binaryIV("ATE", self.data, 
                         dagstring=self.dagstring,
                         unob=self.unobserved,
-                        ),
+                        )
     }
 
     def __init__(self, dataframe, dagstring="X -> Y, U -> X, U -> Y", unobserved='U', indep='X', dep='Y'):

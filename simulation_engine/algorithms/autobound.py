@@ -13,6 +13,7 @@ class AutoBound:
     def bound(query, data, dagstring="Z -> X, X -> Y, U -> X, U -> Y", unob="U", indep="X", dep="Y"):
         print("Running AutoBound for query:", query)
 
+    @staticmethod
     def _compute_joint_probabilities(df, observed, unob):
         """
         Computes the joint probabilities for all Variables in the input DataFrame (except for the unobserved variable).
