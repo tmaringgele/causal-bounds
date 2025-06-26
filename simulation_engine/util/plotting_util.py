@@ -279,6 +279,82 @@ class PlottingUtil:
         return df
 
     @staticmethod
+    def compute_bestAlg(dataframe, query='ATE', delta_tolerance=0.01):
+        """
+        Compute the best algorithm for each row.
+        Best algorithm = (validd OR delta <= delta_tolerance) AND !failed AND smallest bound width.
+        Parameters:
+        dataframe (pd.DataFrame): The input dataframe containing bound information for different algorithms for ONE SCENARIO.
+        query (str): The query type ('ATE' or 'PNS').
+        delta_tolerance (float): The tolerance for the delta value to consider an algorithm as valid.
+        Returns:
+        pd.DataFrame: The same dataframe with an additional column '{query}_bestAlg' indicating the best algorithm for each row.
+        """
+        df = dataframe.copy()
+        
+        # Get all columns containing bound_width for this query type
+        bound_width_cols = [col for col in df.columns if f'{query}_' in col and col.endswith('_bound_width')]
+        
+        # Extract algorithm names from the column names
+        algorithms = [col.replace(f'{query}_', '').replace('_bound_width', '') for col in bound_width_cols]
+        
+        # Compute delta for each algorithm if not present
+        query_range = 2.0 if query.upper() == "ATE" else 1.0
+        for alg in algorithms:
+            lower_col = f'{query}_{alg}_bound_lower'
+            upper_col = f'{query}_{alg}_bound_upper'
+            true_col = f'{query}_true'
+            valid_col = f'{query}_{alg}_bound_valid'
+            delta_col = f'{query}_{alg}_delta'
+            # Only compute if not already present
+            if delta_col not in df.columns and all(col in df.columns for col in [lower_col, upper_col, true_col, valid_col]):
+                # Compute delta only for invalid bounds
+                lower = df[lower_col]
+                upper = df[upper_col]
+                true = df[true_col]
+                valid = df[valid_col]
+                # Distance from true to nearest bound if invalid, else NaN
+                delta = np.where(
+                    valid == False,
+                    np.where(true < lower, (lower - true).abs() / query_range,
+                        np.where(true > upper, (true - upper).abs() / query_range, np.nan)),
+                    np.nan
+                )
+                df[delta_col] = delta
+
+        # Create a new column for the best algorithm
+        best_alg_col = f'{query}_bestAlg'
+        df[best_alg_col] = None
+        
+        # For each row, find the best algorithm
+        for idx, row in df.iterrows():
+            valid_bounds = {}
+            for alg in algorithms:
+                # Check if the bound is valid or within delta tolerance, not failed, and has a valid width
+                delta_col = f'{query}_{alg}_delta'
+                valid_col = f'{query}_{alg}_bound_valid'
+                failed_col = f'{query}_{alg}_bound_failed'
+                width_col = f'{query}_{alg}_bound_width'
+                delta_val = row[delta_col] if delta_col in df.columns else np.nan
+                is_valid = row[valid_col] if valid_col in df.columns else False
+                is_failed = row[failed_col] if failed_col in df.columns else True
+                width_val = row[width_col] if width_col in df.columns else np.nan
+                if (
+                    (is_valid == True or (not pd.isna(delta_val) and delta_val <= delta_tolerance))
+                    and is_failed == False
+                    and not pd.isna(width_val)
+                ):
+                    valid_bounds[alg] = width_val
+            # If there are valid bounds, find the one with minimum width
+            if valid_bounds:
+                min_alg = min(valid_bounds, key=valid_bounds.get)
+                df.at[idx, best_alg_col] = min_alg
+        
+        return df
+
+
+
+    @staticmethod
     def plot_tightest_bounds_distribution(dataframe, valid_only=False, figsize=(12, 6)):
         """
         Plot the distribution of algorithms that provided the tightest bounds.
