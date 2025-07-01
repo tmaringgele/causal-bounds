@@ -18,6 +18,15 @@ class CustomBinaryDAG(Scenario):
             unob=self.unobserved,
             indep=self.indep,
             dep=self.dep
+        ),
+        "PNS_autobound": lambda self: AutoBound.bound(
+            query='PNS',
+            data=self.data,
+            dagstring=self.dagstring,
+            observed=self.observed,
+            unob=self.unobserved,
+            indep=self.indep,
+            dep=self.dep
         )
     }
 
