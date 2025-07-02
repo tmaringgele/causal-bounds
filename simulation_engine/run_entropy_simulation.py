@@ -31,6 +31,12 @@ def main(N_simulations, R_path):
     # install_causaloptim()
     r('.libPaths(c("'+R_path+'/site-library", .libPaths()))')
 
+    #use current timestamp for folder name
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    foldername = f'simulation_results_{timestamp}'
+    os.makedirs(foldername, exist_ok=True)
+
+
     print(f"Running simulation with N_simulations = {N_simulations}", flush=True)
     print(f"So each H_target has N_simulations/10 = {N_simulations/10}", flush=True)    
     
@@ -51,9 +57,9 @@ def main(N_simulations, R_path):
     runtimes = scenario.run()
 
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    pd.DataFrame([runtimes['runtimes']]).to_csv(f'runtimes_{timestamp}.csv', index=False)
-    results.to_pickle(f'results_array_{timestamp}.pkl')
-    results_df.to_pickle(f'results_df_{timestamp}.pkl')
+    pd.DataFrame([runtimes['runtimes']]).to_csv(f'{foldername}/runtimes_{timestamp}.csv', index=False)
+    pd.to_pickle(results, f'{foldername}/results_array_{timestamp}.pkl')
+    results_df.to_pickle(f'{foldername}/results_df_{timestamp}.pkl')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run simulations.")
