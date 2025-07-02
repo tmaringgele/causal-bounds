@@ -39,6 +39,7 @@ def main(N_simulations, R_path):
     results = {}
 
     for h in h_targets:
+        print(f"Running simulation for h_target = {h}", flush=True)
         data = BinaryEntropyConf.generate_data_rolling_ate(int(N_simulations/10), uniform_confounder_entropy=True, noise=False, h_target=h)
         scenario = BinaryEntropyConf(data)
         scenario.run()
