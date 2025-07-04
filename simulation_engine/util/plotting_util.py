@@ -159,6 +159,13 @@ class PlottingUtil:
                         query_range = 1.0  # Default to 1 if unknown
                     avg_invalid_dist = np.mean(dist) / query_range if len(dist) > 0 else None
                 else:
+                    # Determine query range for consistency
+                    if query.upper() == "ATE":
+                        query_range = 2.0
+                    elif query.upper() == "PNS":
+                        query_range = 1.0
+                    else:
+                        query_range = 1.0
                     avg_invalid_dist = None
 
                 # --- Set trivial ceils on the copy only ---
@@ -171,12 +178,16 @@ class PlottingUtil:
                 bound_width = df[f'{algorithm}_bound_width'].mean()
                 net_bound_width = without_failed_and_invalid[f'{algorithm}_bound_width'].mean()
 
+                # Report widths as percent of query range
+                bound_width_pct = (bound_width / query_range * 100) if bound_width is not None else None
+                net_bound_width_pct = (net_bound_width / query_range * 100) if net_bound_width is not None else None
+
                 stats.append({
                     'Algorithm': algorithm,
                     'Fail Rate (%)': f"{fail_rate:.2f}",
                     'Invalid Rate (%)': f"{invalid_rate:.2f}",
-                    'Net Bound Width': f"{net_bound_width:.4f}" if net_bound_width is not None else "N/A",
-                    'Bound Width': f"{bound_width:.4f}" if bound_width is not None else "N/A",
+                    'Net Bound Width (%)': f"{net_bound_width_pct:.2f}" if net_bound_width_pct is not None else "N/A",
+                    'Bound Width (%)': f"{bound_width_pct:.2f}" if bound_width_pct is not None else "N/A",
                     'Invalid Δ (%)': f"{(avg_invalid_dist * 100):.2f}" if avg_invalid_dist is not None else "N/A"
                 })
             else:
@@ -184,12 +195,13 @@ class PlottingUtil:
                     'Algorithm': algorithm,
                     'Fail Rate (%)': "N/A",
                     'Invalid Rate (%)': "N/A",
-                    'Net Bound Width': "N/A",
-                    'Avg. Invalid dist.': "N/A"
+                    'Net Bound Width (%)': "N/A",
+                    'Bound Width (%)': "N/A",
+                    'Invalid Δ (%)': "N/A"
                 })
         stats_df = pd.DataFrame(stats)
-        # Sort by Net Bound Width (convert to float, "N/A" as NaN)
-        stats_df['Net Bound Width Sort'] = pd.to_numeric(stats_df['Net Bound Width'], errors='coerce')
+        # Sort by Net Bound Width (%) (convert to float, "N/A" as NaN)
+        stats_df['Net Bound Width Sort'] = pd.to_numeric(stats_df['Net Bound Width (%)'], errors='coerce')
         stats_df = stats_df.sort_values(by='Net Bound Width Sort', ascending=True).drop(columns=['Net Bound Width Sort'])
         print(stats_df.to_string(index=False))
 
