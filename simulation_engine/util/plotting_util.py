@@ -12,7 +12,7 @@ class PlottingUtil:
     """
 
     @staticmethod
-    def extract_algorithm_names(dataframe, query):
+    def extract_algorithm_names(dataframe, query, remove_query_prefix=False):
         """
         Extract algorihtm names for the given query type (ATE or PNS) from the dataframe.
 
@@ -26,6 +26,9 @@ class PlottingUtil:
         bw_col = [col for col in dataframe.columns if col.startswith(f'{query}_') and col.endswith('_bound_width')]
         # remove the '_bound_width' suffix to get algorithm names
         algorithms = [col.replace('_bound_width', '') for col in bw_col]
+        # optionally remove the query prefix
+        if remove_query_prefix:
+            algorithms = [alg.replace(f'{query}_', '') for alg in algorithms]
         return algorithms
 
     @staticmethod
