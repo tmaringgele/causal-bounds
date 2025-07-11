@@ -126,7 +126,7 @@ class AutoBound:
             raise ValueError("Query must be either 'ATE' or 'PNS'.")
 
         program = problem.write_program()
-        lb, ub = program.run_pyomo(solver_name='glpk', verbose=False)
+        lb, ub = program.run_pyomo(solver_name='highs', verbose=False)
 
         return lb, ub
     

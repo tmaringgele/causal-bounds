@@ -19,3 +19,22 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+Third-Party Components
+
+This software integrates with the following third-party libraries, which are not
+distributed with this package but may be required for specific functionality:
+
+- CREDICI – https://github.com/IDSIA/credici
+- CREMA – https://github.com/IDSIA/crema
+
+These libraries are:
+
+- Copyright (c) IDSIA
+- Licensed under the GNU Lesser General Public License v3.0 (LGPL-3.0)
+
+These components are accessed dynamically via Java (JVM) through `jpype`, and retain
+their original licenses. Users of this software must comply with the licensing terms
+of these components when using functionality that depends on them.
