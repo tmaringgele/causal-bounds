@@ -1,9 +1,0 @@
-{
-    "java.project.sourcePaths": [
-        "zaffalon_bounds",
-        "simulation_engine/algorithms/zaffalon"
-    ],
-    "java.project.referencedLibraries": [
-        "simulation_engine/algorithms/zaffalon/credici.jar",
-    ]
-}

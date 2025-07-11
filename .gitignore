@@ -2,3 +2,4 @@ autobound/build/
 **/__pycache__/
 apid/mlruns/
 apid/outputs/
+.vscode
