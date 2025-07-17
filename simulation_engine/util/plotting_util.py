@@ -475,7 +475,16 @@ class PlottingUtil:
                 df[f'{algorithm}_bound_lower_smooth'] = df[lower_col].rolling(window=window, center=True).mean()
                 df[f'{algorithm}_bound_upper_smooth'] = df[upper_col].rolling(window=window, center=True).mean()
                 sns.lineplot(data=df, x=roll_over, y=f'{algorithm}_bound_lower_smooth', color=f'C{algorithms.index(algorithm)}', alpha=alpha)
-                sns.lineplot(data=df, x=roll_over, y=f'{algorithm}_bound_upper_smooth', color=f'C{algorithms.index(algorithm)}', label=f'{algorithm}', alpha=alpha)
+                # Remove the prefix before the first underscore for the label
+                label_alg = algorithm.split('_', 1)[1] if '_' in algorithm else algorithm
+                sns.lineplot(
+                    data=df,
+                    x=roll_over,
+                    y=f'{algorithm}_bound_upper_smooth',
+                    color=f'C{algorithms.index(algorithm)}',
+                    label=f'{label_alg}',
+                    alpha=alpha
+                )
             else:
                 print(f"Warning: Columns for algorithm '{algorithm}' not found in dataframe.")
 
