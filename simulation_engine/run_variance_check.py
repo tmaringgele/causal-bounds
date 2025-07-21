@@ -26,7 +26,7 @@ def install_causaloptim():
 def main(N_simulations, R_path):
     print(f"Setting R path to {R_path}", flush=True)
     os.environ['R_HOME'] = R_path
-    from simulation_engine.scenarios.iv.binary_iv import BinaryIV
+    from simulation_engine.scenarios.conf.binary_conf import BinaryConf
     #install the R causaloptim package
     # install_causaloptim()
     r('.libPaths(c("'+R_path+'/site-library", .libPaths()))')
