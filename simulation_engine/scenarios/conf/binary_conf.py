@@ -175,7 +175,9 @@ class BinaryConf(Scenario):
         intercept_X=None,
         intercept_Y=None,
         p_U=None,
-        uniform_confounder_entropy=False
+        uniform_confounder_entropy=False,
+        squasher_X_name=None,
+        squasher_Y_name=None
     ):
         """
         Simulate binary data using a structural causal model (SCM) with additive, heteroskedastic noise.
@@ -205,8 +207,10 @@ class BinaryConf(Scenario):
 
         # Random squashing functions for X and Y
         squashers = datagen_util.get_squashers()
-        squasher_X_name = np.random.choice(list(squashers.keys()))
-        squasher_Y_name = np.random.choice(list(squashers.keys()))
+        if squasher_X_name is None:
+            squasher_X_name = np.random.choice(list(squashers.keys()))
+        if squasher_Y_name is None:
+            squasher_Y_name = np.random.choice(list(squashers.keys()))
         squasher_X = squashers[squasher_X_name]
         squasher_Y = squashers[squasher_Y_name]
 
