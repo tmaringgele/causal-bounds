@@ -35,7 +35,7 @@ def main(N_simulations, R_path):
     
     simulations = []
     for i in range(N_simulations):
-        sj_interest = BinaryConf._generate_data(n=500, b_U_X=1, b_U_Y=-1, b_X_Y=2, intercept_X=0.3, intercept_Y=-0.5, p_U=0.6, squasher_X_name='sigmoid', squasher_Y_name='sigmoid')
+        sj_interest = BinaryConf._generate_data(n=500, b_U_X=1, b_U_Y=-1, b_X_Y=2, intercept_X=0.3, intercept_Y=-0.5, p_U=0.8, squasher_X_name='sigmoid', squasher_Y_name='sigmoid')
         simulations.append(sj_interest)
     data = pd.DataFrame(simulations)
     print("Data generation complete", flush=True)
