@@ -463,7 +463,7 @@ class PlottingUtil:
 
         # Plot the smoothed data
         plt.figure(figsize=(10, 6))
-        sns.lineplot(data=df, x=roll_over, y=f'{query}_true_smooth', label=f'${query}_{{true}}$', color='blue')
+        sns.lineplot(data=df, x=roll_over, y=f'{query}_true_smooth', label=f'{query}$_{{true}}$', color='blue')
 
         alpha = 0.8
         for algorithm in algorithms:
@@ -490,8 +490,9 @@ class PlottingUtil:
 
         if zeroline:
             plt.axhline(0, color='red', linestyle='--', label='Zero Line')
-        plt.title(f'Algorithms vs ${query}_{{true}}$ (smoothed out)')
-        plt.xlabel(roll_over)
+        plt.title(f'Algorithms vs. {query}$_{{true}}$')
+        xlabel = '$β_{X → Y}$' if roll_over == 'b_X_Y' else roll_over
+        plt.xlabel(xlabel)
         plt.ylabel(f'{query} Value')
         plt.legend()
         plt.grid(True)
