@@ -61,6 +61,9 @@ class BinaryConf(Scenario):
         "PNS_entropybounds-randomTheta": lambda self: EntropyBounds.bound(self.data, query='PNS', randomize_theta=True),
         "ATE_entropybounds-randomTheta": lambda self: EntropyBounds.bound(self.data, query='ATE', randomize_theta=True),
 
+        "ATE_entropybounds-underspecifyTheta": lambda self: EntropyBounds.bound(self.data, query='ATE', underspecify_theta=True),
+        "PNS_entropybounds-underspecifyTheta": lambda self: EntropyBounds.bound(self.data, query='PNS', underspecify_theta=True),
+
         "ATE_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "ATE", isConf=True),
         "PNS_zaffalonbounds": lambda self: ZaffalonBounds.bound_binaryIV(self.data, "PNS", isConf=True),
 

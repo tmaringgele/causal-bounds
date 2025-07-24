@@ -15,7 +15,7 @@ class EntropyBounds:
 
     """
     
-    def bound(data, theta=0.5, query='ATE', method="cf",  randomize_theta=False, true_theta=False):
+    def bound(data, theta=0.5, query='ATE', method="cf",  randomize_theta=False, true_theta=False, underspecify_theta=False):
         """
         Compute entropy bounds for the ATE using the given method and entropy constraint.
 
@@ -37,6 +37,11 @@ class EntropyBounds:
             elif true_theta:
                 # Use the true theta from the simulation
                 theta = sim['entropy_U']
+
+            elif underspecify_theta:
+                true_entr = sim['entropy_U']
+                #randomly underspecify theta by picking it from Uni(0, true_entr)
+                theta = np.random.uniform(0, true_entr)
 
             df = pd.DataFrame({'Y': sim['Y'], 'X': sim['X']})
             failed = False
@@ -64,6 +69,8 @@ class EntropyBounds:
                 theta_rounded = "trueTheta"
             elif randomize_theta:
                 theta_rounded = "randomTheta"
+            elif underspecify_theta:
+                theta_rounded = "underspecifyTheta"
             data.at[idx, f"{query}_entropybounds-{theta_rounded}_bound_lower"] = bound_lower
             data.at[idx, f"{query}_entropybounds-{theta_rounded}_bound_upper"] = bound_upper
             data.at[idx, f"{query}_entropybounds-{theta_rounded}_bound_valid"] = bounds_valid
