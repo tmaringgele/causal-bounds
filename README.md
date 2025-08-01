@@ -45,6 +45,10 @@ from simulation_engine.util.plotting_util import print_bound_statistics_table
 print_bound_statistics_table()
 ```
 
+### Running the Classifier (Random Forest)
+1. Navigate to the `classification/` folder.
+2. Run the `classification.ipynb` notebook.
+
 ## 📁 Repository Structure
 
 - `simulation_engine/`: Main simulation scripts and utilities
