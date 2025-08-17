@@ -3,4 +3,5 @@ autobound/build/
 apid/mlruns/
 apid/outputs/
 .vscode
-presentation/
+presentation/media/
+presentation/plots
